@@ -1,970 +1,1115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>MeetSlot — Timezone meeting planner</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeetSlot — Timezone Meeting Coordinator</title>
 <style>
-:root {
-  --bg:        #f6f6f4;
-  --surface:   #ffffff;
-  --surface2:  #f0f0ed;
-  --border:    #e3e3de;
-  --border2:   #c8c8c2;
-  --text:      #181816;
-  --text2:     #5a5a56;
-  --text3:     #9a9a94;
-  --blue:      #3b82f6;
-  --blue-idle: rgba(59,130,246,0.10);
-  --green-dk:  #15803d;
-  --green-md:  #4ade80;
-  --amber:     #f59e0b;
-  --orange:    #fb923c;
-  --red:       #ef4444;
-  --now:       #f59e0b;
-  --radius:    10px;
-  --rsm:       6px;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Layout ── */
-.wrap{max-width:720px;margin:0 auto;padding:0 1rem 5rem}
-header{padding:2rem 0 1.5rem;display:flex;align-items:baseline;gap:.75rem}
-.logo{font-size:1.4rem;font-weight:700;letter-spacing:-.02em}
-.logo span{color:#16a34a}
-.tagline{font-size:.8rem;color:var(--text3)}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem}
-.slabel{font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:.75rem}
+  :root {
+    --bg: #f6f6f4;
+    --card: #ffffff;
+    --border: #e3e3de;
+    --radius: 10px;
+    --blue: #3b82f6;
+    --blue-ideal: rgba(59,130,246,1);
+    --blue-possible: rgba(59,130,246,0.30);
+    --blue-stretch: rgba(59,130,246,0.11);
+    --off: #e3e3de;
+    --green-dark: #15803d;
+    --green-light: #86efac;
+    --amber: #f59e0b;
+    --orange: #ea580c;
+    --gray-text: #6b7280;
+    --text: #111827;
+    --green-brand: #16a34a;
+  }
 
-/* ── Add row ── */
-.add-row{display:flex;gap:8px}
-.add-row input{flex:1;height:40px;border:1px solid var(--border2);border-radius:var(--rsm);padding:0 12px;font-size:.9rem;background:var(--bg);color:var(--text);outline:none;transition:border .15s}
-.add-row input:focus{border-color:var(--blue)}
-.add-row input::placeholder{color:var(--text3)}
-.inp-name{max-width:120px}
-.btn{height:40px;padding:0 16px;border-radius:var(--rsm);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:background .12s}
-.btn:hover{background:var(--surface2)}
-.btn:active{transform:scale(.98)}
-.btn-blue{background:var(--blue);color:#fff;border-color:var(--blue)}
-.btn-blue:hover{background:#2563eb;border-color:#2563eb}
-.btn-sm{height:32px;padding:0 12px;font-size:.78rem}
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 48px 0;
+  }
 
-/* ── Autocomplete ── */
-.city-wrap{position:relative;flex:1}
-.ac-list{position:absolute;top:44px;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rsm);max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.08);display:none}
-.ac-list div{padding:9px 12px;font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:8px}
-.ac-list div:hover,.ac-list div.hi{background:var(--surface2)}
-.ac-flag{font-size:1.1rem}
-.ac-ctry{color:var(--text3);font-size:.78rem;margin-left:auto}
+  header {
+    padding: 20px 24px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
 
-/* ── People list ── */
-.people-list{display:flex;flex-direction:column;gap:6px;margin-top:.75rem}
-.chip{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--rsm);background:var(--bg);border:1px solid var(--border);font-size:.85rem}
-.chip .cflag{font-size:1.2rem;flex-shrink:0}
-.chip .cmeta{flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.chip .cname{font-weight:600;color:var(--text)}
-.chip .cdot{color:var(--text3)}
-.chip .ctz{color:var(--text3);font-size:.78rem}
-.chip .crm{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text3);font-size:1.1rem;padding:2px 6px;border-radius:4px}
-.chip .crm:hover{background:var(--surface2);color:var(--red)}
-.foot-row{display:flex;justify-content:flex-end;margin-top:.5rem}
-.clear-btn{background:none;border:none;font-size:.78rem;color:var(--text3);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-.clear-btn:hover{color:var(--red)}
-.empty{text-align:center;padding:2.5rem 1rem;color:var(--text3);font-size:.9rem}
-.empty-icon{font-size:2.5rem;margin-bottom:.5rem}
+  .logo { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+  .logo span.m { color: var(--text); }
+  .logo span.s { color: var(--green-brand); }
+  .logo-sub { font-size: 0.72rem; color: var(--gray-text); font-weight: 400; letter-spacing: 0.2px; margin-top: 2px; }
 
-/* ── Timeline card ── */
-.tl-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-.tl-grid{min-width:540px;position:relative}
+  .main { max-width: 860px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 20px; }
 
-/* Header rows */
-.tl-hdr-area{margin-bottom:8px}
-.tl-hdr-row{display:flex;align-items:center;height:20px}
-.tl-rlabel{width:100px;flex-shrink:0;font-size:.58rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3)}
-.tl-hlabels{flex:1;display:flex}
-.tl-hl{flex:2;text-align:center;font-size:.65rem;color:var(--text3)}
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
 
-/* Local time row */
-.tl-local-row{display:flex;align-items:center;height:20px;margin-top:2px}
-.tl-ltag{width:100px;flex-shrink:0;font-size:.62rem;font-weight:600;color:var(--blue);display:flex;align-items:center;gap:4px;overflow:hidden}
-.tl-ltag .ldot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0}
-.tl-ltag .lname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tl-lhours{flex:1;display:flex}
-.tl-ll{flex:2;text-align:center;font-size:.65rem;font-weight:600;color:var(--blue)}
+  .card-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-text);
+    margin-bottom: 16px;
+  }
 
-/* Hint */
-.tl-hint{font-size:.68rem;color:var(--text3);margin-bottom:7px}
+  /* --- Add Participants --- */
+  .add-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
 
-/* Person rows */
-.tl-row{display:flex;align-items:center;margin-bottom:4px}
-.tl-name{width:100px;flex-shrink:0;font-size:.78rem;color:var(--text2);padding:3px 8px 3px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:4px;transition:background .12s;user-select:none;display:flex;align-items:center;gap:4px}
-.tl-name:hover{background:var(--surface2)}
-.tl-name.pinned{font-weight:700;background:var(--blue-idle);color:var(--blue)}
-.tl-blocks{flex:1;display:flex;height:28px;border-radius:5px;overflow:hidden}
-.tl-b{flex:1}
+  .input-wrap { position: relative; flex: 1; min-width: 140px; }
 
-/* Overlap row */
-.tl-sep{border-top:1px solid var(--border);margin:5px 0 7px}
-.tl-ov-row{display:flex;align-items:center}
-.tl-ov-label{width:100px;flex-shrink:0;font-size:.68rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
-.tl-ov-wrap{flex:1;position:relative;height:28px}
-.tl-ov-blocks{display:flex;height:28px;border-radius:5px;overflow:hidden;position:relative;z-index:0}
-.tl-ovb{flex:1}
+  input[type="text"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 0.9rem;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--blue); background: #fff; }
 
-/* ── Scrubber ── */
-.scrubber{
-  position:absolute;top:0;bottom:0;width:3px;
-  background:var(--now);border-radius:2px;
-  cursor:ew-resize;z-index:20;touch-action:none;
-  transform:translateX(-50%);
-}
-.scrubber::before{
-  content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);
-  width:13px;height:13px;border-radius:50%;
-  background:var(--now);box-shadow:0 0 0 3px #fff,0 0 0 5px var(--now);
-}
-/* Scrubber tooltip shown above overlap row */
-.scrub-tip{
-  position:absolute;bottom:calc(100% + 6px);left:0;
-  background:#18181e;color:#fff;font-size:.7rem;font-weight:600;
-  padding:3px 8px;border-radius:5px;white-space:nowrap;
-  pointer-events:none;z-index:30;transform:translateX(-50%);
-  opacity:0;transition:opacity .12s;
-}
-.scrub-tip.show{opacity:1}
+  .autocomplete-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 200;
+    display: none;
+  }
+  .autocomplete-list.open { display: block; }
+  .ac-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    transition: background 0.1s;
+  }
+  .ac-item:hover, .ac-item.active { background: var(--bg); }
+  .ac-flag { font-size: 1.1rem; flex-shrink: 0; }
+  .ac-name { font-weight: 600; }
+  .ac-country { color: var(--gray-text); font-size: 0.8rem; }
+  .ac-tz { color: var(--gray-text); font-size: 0.78rem; margin-left: auto; white-space: nowrap; }
 
-/* Per-row scrubber tooltip */
-.row-tip{
-  position:absolute;right:0;top:50%;transform:translateY(-50%);
-  background:var(--blue);color:#fff;font-size:.65rem;font-weight:700;
-  padding:2px 7px;border-radius:4px;pointer-events:none;z-index:15;
-  opacity:0;transition:opacity .1s;white-space:nowrap;
-}
-.row-tip.show{opacity:1}
-.tl-row{position:relative}
+  .btn {
+    padding: 9px 16px;
+    border: none;
+    border-radius: 7px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--green-brand); color: #fff; }
+  .btn-primary:not(:disabled):hover { background: #15803d; }
+  .btn-ghost { background: transparent; color: var(--gray-text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-danger { background: transparent; color: #ef4444; border: none; font-size: 0.78rem; padding: 4px 8px; }
+  .btn-danger:hover { background: #fef2f2; border-radius: 5px; }
 
-/* Now scrubber vertical line — lives in ovWrap, extends upward through person rows */
-.now-full-line{
-  position:absolute;width:2px;background:var(--now);
-  pointer-events:none;z-index:10;transform:translateX(-50%);border-radius:2px;
-  bottom:0;
-}
+  .participants-list { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 
-/* Legend */
-.legend{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--text3)}
-.leg-block{width:14px;height:10px;border-radius:2px;flex-shrink:0}
+  .participant-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: var(--bg);
+    cursor: pointer;
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .participant-row:hover { background: #ededea; }
+  .participant-row.active-local { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .p-flag { font-size: 1.15rem; flex-shrink: 0; }
+  .p-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+  .p-city { color: var(--gray-text); font-size: 0.82rem; }
+  .p-offset { font-size: 0.78rem; color: var(--gray-text); font-family: monospace; margin-left: auto; white-space: nowrap; }
 
-/* Summary */
-.ov-summary{margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.badge{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:500;padding:4px 10px;border-radius:20px}
-.badge-green{background:#dcfce7;color:#15803d}
-.badge-yellow{background:#fef3c7;color:#d97706}
-.badge-gray{background:var(--surface2);color:var(--text2)}
-.bdot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
-.bdot-g{background:#16a34a}.bdot-y{background:#d97706}.bdot-r{background:var(--red)}
+  .list-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .count-label { font-size: 0.78rem; color: var(--gray-text); }
 
-/* ── Suggestions ── */
-.sugs{display:flex;flex-direction:column;gap:10px}
-.sug{border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px;background:var(--surface)}
-.sug.best{border-color:#86efac;background:#f0fdf4}
-.sug.ok{border-color:#fde68a;background:#fffbeb}
-.sug-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.sug-title{font-size:.85rem;font-weight:600}
-.sug-utc{margin-left:auto;font-size:.75rem;color:var(--text3)}
-.sug-times{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
-.sug-t{display:flex;flex-direction:column;gap:1px}
-.sug-t .sc{font-size:.7rem;color:var(--text3)}
-.sug-t .st{font-size:.95rem;font-weight:700;letter-spacing:-.01em}
-.sug-t .snd{font-size:.65rem;color:var(--amber);font-weight:600}
-.sug-foot{display:flex;align-items:center;justify-content:space-between}
-.foot-note{font-size:.72rem;color:var(--text3)}
-.wa-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--rsm);background:#25d366;color:#fff;border:none;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .12s}
-.wa-btn:hover{background:#1da851}
-.wa-btn svg{width:15px;height:15px;fill:currentColor;flex-shrink:0}
+  /* --- Timeline --- */
+  .timeline-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .timeline-inner { min-width: 540px; position: relative; }
 
-/* ── Share ── */
-.share-row{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px}
-.share-url{flex:1;font-size:.78rem;color:var(--text3);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.share-note{font-size:.72rem;color:var(--text3);margin-top:6px}
+  .tl-headers { display: flex; flex-direction: column; margin-bottom: 6px; }
+  .tl-hour-row { display: grid; grid-template-columns: 80px repeat(24, 1fr); font-size: 0.7rem; color: var(--gray-text); font-family: monospace; }
+  .tl-hour-row .tl-label { display: flex; align-items: center; font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; padding-right: 6px; justify-content: flex-end; }
+  .tl-hour-cell { text-align: center; padding: 2px 0; }
+  .tl-hour-cell:nth-child(odd) { background: rgba(0,0,0,0.02); }
 
-/* ── Toast ── */
-.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:#18181e;color:#fff;padding:10px 20px;border-radius:24px;font-size:.82rem;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:999}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .tl-row {
+    display: grid;
+    grid-template-columns: 80px repeat(24, 1fr);
+    margin-bottom: 3px;
+    position: relative;
+  }
+  .tl-row-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    border-radius: 4px 0 0 4px;
+  }
+  .tl-row-label:hover { background: var(--bg); }
+  .tl-row-label.active-local { color: var(--blue); }
 
-@media(max-width:500px){.add-row{flex-wrap:wrap}.inp-name{max-width:100%}header{flex-direction:column;gap:.25rem}}
+  .tl-cell {
+    height: 28px;
+    border-radius: 2px;
+    transition: opacity 0.1s;
+    position: relative;
+  }
+  .tl-cell.ideal { background: var(--blue-ideal); }
+  .tl-cell.possible { background: var(--blue-possible); }
+  .tl-cell.stretch { background: var(--blue-stretch); }
+  .tl-cell.off { background: var(--off); }
+
+  .tl-overlap-row .tl-cell.ov-all-ideal { background: #15803d; }
+  .tl-overlap-row .tl-cell.ov-mixed { background: #4ade80; }
+  .tl-overlap-row .tl-cell.ov-feasible { background: #fbbf24; }
+  .tl-overlap-row .tl-cell.ov-none { background: var(--off); }
+
+  .tl-row-label.overlap-label { font-size: 0.68rem; color: var(--gray-text); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Scrubber */
+  .scrubber-container {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 80px; /* offset for label column */
+    right: 0;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .scrubber-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--amber);
+    transform: translateX(-1px);
+    pointer-events: all;
+    cursor: ew-resize;
+    z-index: 51;
+  }
+  .scrubber-line::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    background: var(--amber);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+  .scrubber-tooltip {
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    font-size: 0.7rem;
+    font-family: monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .tl-inline-tooltip {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.68rem;
+    font-family: monospace;
+    color: rgba(0,0,0,0.6);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 10;
+    background: rgba(255,255,255,0.85);
+    padding: 1px 3px;
+    border-radius: 3px;
+  }
+
+  .tl-hint { font-size: 0.72rem; color: var(--gray-text); margin-top: 10px; text-align: center; }
+
+  /* Legend */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--gray-text); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* Suggestions */
+  .suggestions { display: flex; flex-direction: column; gap: 12px; }
+  .suggestion-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sug-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sug-rank { font-size: 0.72rem; font-weight: 700; color: var(--gray-text); background: var(--bg); padding: 2px 8px; border-radius: 20px; }
+  .sug-time { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.3px; }
+  .sug-score { font-size: 0.75rem; color: var(--gray-text); margin-left: auto; }
+  .sug-participants { display: flex; flex-direction: column; gap: 4px; }
+  .sug-p-row { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; }
+  .sug-p-time { font-family: monospace; font-weight: 700; min-width: 52px; }
+  .sug-p-time.ideal { color: var(--text); }
+  .sug-p-time.possible { color: var(--amber); }
+  .sug-p-time.stretch { color: var(--orange); }
+  .sug-p-name { color: var(--gray-text); }
+  .day-badge { font-size: 0.68rem; background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 10px; font-weight: 600; }
+  .btn-copy { align-self: flex-start; padding: 7px 14px; font-size: 0.8rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-weight: 600; cursor: pointer; transition: background 0.12s; }
+  .btn-copy:hover { background: #ededea; }
+  .btn-copy.copied { color: var(--green-brand); border-color: var(--green-brand); }
+
+  .empty-state { text-align: center; padding: 28px 0; color: var(--gray-text); font-size: 0.88rem; }
+
+  @media (max-width: 600px) {
+    .add-row { gap: 6px; }
+    .card { padding: 16px; }
+    .tl-row-label { font-size: 0.68rem; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="logo">meet<span>slot</span></div>
-    <div class="tagline">Find meeting times across timezones — share via WhatsApp</div>
-  </header>
 
-  <!-- ADD -->
+<header>
+  <div>
+    <div class="logo"><span class="m">meet</span><span class="s">slot</span></div>
+    <div class="logo-sub">Timezone meeting coordinator</div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Card 1: Add Participants -->
   <div class="card">
-    <div class="slabel">Add participants</div>
+    <div class="card-title">Participants</div>
     <div class="add-row">
-      <input class="inp-name" id="inp-name" type="text" placeholder="Name" maxlength="20" autocomplete="off"/>
-      <div class="city-wrap">
-        <input id="inp-city" type="text" placeholder="City — e.g. Buenos Aires" autocomplete="off"/>
-        <div class="ac-list" id="ac-list"></div>
+      <div class="input-wrap">
+        <input type="text" id="nameInput" placeholder="Name" autocomplete="off" maxlength="32" style="max-width:140px">
       </div>
-      <button class="btn btn-blue" id="btn-add">+ Add</button>
+      <div class="input-wrap">
+        <input type="text" id="cityInput" placeholder="City or country…" autocomplete="off">
+        <div class="autocomplete-list" id="acList"></div>
+      </div>
+      <button class="btn btn-primary" id="addBtn" disabled>+ Add</button>
     </div>
-    <div class="people-list" id="people-list">
-      <div class="empty" id="empty-msg"><div class="empty-icon">🌍</div>Add at least 2 people to see the timeline</div>
-    </div>
-    <div class="foot-row" id="clear-row" style="display:none">
-      <button class="clear-btn" id="btn-clear">Clear all</button>
+    <div class="participants-list" id="participantsList"></div>
+    <div class="list-footer" id="listFooter" style="display:none">
+      <span class="count-label" id="countLabel"></span>
+      <button class="btn btn-ghost" onclick="clearAll()" style="font-size:0.78rem;padding:5px 10px">Clear all</button>
     </div>
   </div>
 
-  <!-- TIMELINE -->
-  <div class="card" id="card-tl" style="display:none">
-    <div class="slabel">24-hour view · UTC</div>
-    <div class="tl-outer" id="tl-outer">
-      <div class="tl-grid" id="tl-grid"></div>
+  <!-- Card 2: Timeline -->
+  <div class="card" id="timelineCard">
+    <div class="card-title">24-hour UTC timeline <span id="localTzLabel" style="font-weight:400;text-transform:none;letter-spacing:0"></span></div>
+    <div class="timeline-wrap">
+      <div class="timeline-inner" id="timelineInner">
+        <div class="empty-state" id="timelineEmpty">Add participants to see the timeline.</div>
+      </div>
     </div>
-    <div class="legend" id="tl-legend"></div>
-    <div class="ov-summary" id="ov-summary"></div>
+    <div class="legend" id="tlLegend" style="display:none">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue-ideal)"></div>Ideal (09–17)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue-possible)"></div>Possible (07–09, 17–20)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue-stretch)"></div>Stretch (06–07, 20–22)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--off)"></div>Off</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#15803d"></div>All ideal overlap</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Mixed overlap</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Feasible</div>
+    </div>
+    <div class="tl-hint" id="tlHint" style="display:none">Drag the <span style="color:var(--amber);font-weight:700">amber line</span> to inspect times · Double-click to reset · Click a name to view their local time</div>
   </div>
 
-  <!-- SUGGESTIONS -->
-  <div class="card" id="card-sugs" style="display:none">
-    <div class="slabel">Best meeting windows</div>
-    <div class="sugs" id="sugs"></div>
-  </div>
-
-  <!-- SHARE -->
-  <div class="card" id="card-share" style="display:none">
-    <div class="slabel">Share this lineup</div>
-    <div class="share-row">
-      <div class="share-url" id="share-url"></div>
-      <button class="btn btn-sm" id="btn-copy-link">Copy link</button>
+  <!-- Card 3: Suggestions -->
+  <div class="card">
+    <div class="card-title">Best meeting times</div>
+    <div class="suggestions" id="suggestionsContainer">
+      <div class="empty-state">Add participants to see suggestions.</div>
     </div>
-    <div class="share-note">Anyone with this link sees the same participants — no account needed.</div>
   </div>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
-// ─── CITIES ──────────────────────────────────────────────────────────────────
-const CITIES=[
-  {name:"Abu Dhabi",country:"UAE",flag:"🇦🇪",tz:"Asia/Dubai"},
-  {name:"Accra",country:"Ghana",flag:"🇬🇭",tz:"Africa/Accra"},
-  {name:"Addis Ababa",country:"Ethiopia",flag:"🇪🇹",tz:"Africa/Addis_Ababa"},
-  {name:"Adelaide",country:"Australia",flag:"🇦🇺",tz:"Australia/Adelaide"},
-  {name:"Almaty",country:"Kazakhstan",flag:"🇰🇿",tz:"Asia/Almaty"},
-  {name:"Amsterdam",country:"Netherlands",flag:"🇳🇱",tz:"Europe/Amsterdam"},
-  {name:"Anchorage",country:"USA",flag:"🇺🇸",tz:"America/Anchorage"},
-  {name:"Ankara",country:"Turkey",flag:"🇹🇷",tz:"Europe/Istanbul"},
-  {name:"Athens",country:"Greece",flag:"🇬🇷",tz:"Europe/Athens"},
-  {name:"Atlanta",country:"USA",flag:"🇺🇸",tz:"America/New_York"},
-  {name:"Auckland",country:"New Zealand",flag:"🇳🇿",tz:"Pacific/Auckland"},
-  {name:"Baghdad",country:"Iraq",flag:"🇮🇶",tz:"Asia/Baghdad"},
-  {name:"Baku",country:"Azerbaijan",flag:"🇦🇿",tz:"Asia/Baku"},
-  {name:"Bangkok",country:"Thailand",flag:"🇹🇭",tz:"Asia/Bangkok"},
-  {name:"Barcelona",country:"Spain",flag:"🇪🇸",tz:"Europe/Madrid"},
-  {name:"Beijing",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
-  {name:"Beirut",country:"Lebanon",flag:"🇱🇧",tz:"Asia/Beirut"},
-  {name:"Belgrade",country:"Serbia",flag:"🇷🇸",tz:"Europe/Belgrade"},
-  {name:"Berlin",country:"Germany",flag:"🇩🇪",tz:"Europe/Berlin"},
-  {name:"Bogotá",country:"Colombia",flag:"🇨🇴",tz:"America/Bogota"},
-  {name:"Brisbane",country:"Australia",flag:"🇦🇺",tz:"Australia/Brisbane"},
-  {name:"Brussels",country:"Belgium",flag:"🇧🇪",tz:"Europe/Brussels"},
-  {name:"Bucharest",country:"Romania",flag:"🇷🇴",tz:"Europe/Bucharest"},
-  {name:"Budapest",country:"Hungary",flag:"🇭🇺",tz:"Europe/Budapest"},
-  {name:"Buenos Aires",country:"Argentina",flag:"🇦🇷",tz:"America/Argentina/Buenos_Aires"},
-  {name:"Cairo",country:"Egypt",flag:"🇪🇬",tz:"Africa/Cairo"},
-  {name:"Casablanca",country:"Morocco",flag:"🇲🇦",tz:"Africa/Casablanca"},
-  {name:"Chicago",country:"USA",flag:"🇺🇸",tz:"America/Chicago"},
-  {name:"Colombo",country:"Sri Lanka",flag:"🇱🇰",tz:"Asia/Colombo"},
-  {name:"Copenhagen",country:"Denmark",flag:"🇩🇰",tz:"Europe/Copenhagen"},
-  {name:"Dakar",country:"Senegal",flag:"🇸🇳",tz:"Africa/Dakar"},
-  {name:"Dallas",country:"USA",flag:"🇺🇸",tz:"America/Chicago"},
-  {name:"Dar es Salaam",country:"Tanzania",flag:"🇹🇿",tz:"Africa/Dar_es_Salaam"},
-  {name:"Delhi",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
-  {name:"Denver",country:"USA",flag:"🇺🇸",tz:"America/Denver"},
-  {name:"Dhaka",country:"Bangladesh",flag:"🇧🇩",tz:"Asia/Dhaka"},
-  {name:"Dubai",country:"UAE",flag:"🇦🇪",tz:"Asia/Dubai"},
+// ─── CITY DATA ───────────────────────────────────────────────────────────────
+const CITIES = [
+  {name:"New York",country:"United States",flag:"🇺🇸",tz:"America/New_York"},
+  {name:"Los Angeles",country:"United States",flag:"🇺🇸",tz:"America/Los_Angeles"},
+  {name:"Chicago",country:"United States",flag:"🇺🇸",tz:"America/Chicago"},
+  {name:"Houston",country:"United States",flag:"🇺🇸",tz:"America/Chicago"},
+  {name:"Denver",country:"United States",flag:"🇺🇸",tz:"America/Denver"},
+  {name:"Seattle",country:"United States",flag:"🇺🇸",tz:"America/Los_Angeles"},
+  {name:"San Francisco",country:"United States",flag:"🇺🇸",tz:"America/Los_Angeles"},
+  {name:"Miami",country:"United States",flag:"🇺🇸",tz:"America/New_York"},
+  {name:"Boston",country:"United States",flag:"🇺🇸",tz:"America/New_York"},
+  {name:"Atlanta",country:"United States",flag:"🇺🇸",tz:"America/New_York"},
+  {name:"Phoenix",country:"United States",flag:"🇺🇸",tz:"America/Phoenix"},
+  {name:"Dallas",country:"United States",flag:"🇺🇸",tz:"America/Chicago"},
+  {name:"Minneapolis",country:"United States",flag:"🇺🇸",tz:"America/Chicago"},
+  {name:"Honolulu",country:"United States",flag:"🇺🇸",tz:"Pacific/Honolulu"},
+  {name:"Anchorage",country:"United States",flag:"🇺🇸",tz:"America/Anchorage"},
+  {name:"London",country:"United Kingdom",flag:"🇬🇧",tz:"Europe/London"},
+  {name:"Manchester",country:"United Kingdom",flag:"🇬🇧",tz:"Europe/London"},
+  {name:"Edinburgh",country:"United Kingdom",flag:"🇬🇧",tz:"Europe/London"},
   {name:"Dublin",country:"Ireland",flag:"🇮🇪",tz:"Europe/Dublin"},
-  {name:"Frankfurt",country:"Germany",flag:"🇩🇪",tz:"Europe/Berlin"},
-  {name:"Guangzhou",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
-  {name:"Guatemala City",country:"Guatemala",flag:"🇬🇹",tz:"America/Guatemala"},
-  {name:"Hanoi",country:"Vietnam",flag:"🇻🇳",tz:"Asia/Ho_Chi_Minh"},
-  {name:"Havana",country:"Cuba",flag:"🇨🇺",tz:"America/Havana"},
-  {name:"Helsinki",country:"Finland",flag:"🇫🇮",tz:"Europe/Helsinki"},
-  {name:"Ho Chi Minh City",country:"Vietnam",flag:"🇻🇳",tz:"Asia/Ho_Chi_Minh"},
-  {name:"Hong Kong",country:"China",flag:"🇭🇰",tz:"Asia/Hong_Kong"},
-  {name:"Honolulu",country:"USA",flag:"🇺🇸",tz:"Pacific/Honolulu"},
-  {name:"Houston",country:"USA",flag:"🇺🇸",tz:"America/Chicago"},
-  {name:"Istanbul",country:"Turkey",flag:"🇹🇷",tz:"Europe/Istanbul"},
-  {name:"Jakarta",country:"Indonesia",flag:"🇮🇩",tz:"Asia/Jakarta"},
-  {name:"Johannesburg",country:"South Africa",flag:"🇿🇦",tz:"Africa/Johannesburg"},
-  {name:"Kabul",country:"Afghanistan",flag:"🇦🇫",tz:"Asia/Kabul"},
-  {name:"Karachi",country:"Pakistan",flag:"🇵🇰",tz:"Asia/Karachi"},
-  {name:"Kathmandu",country:"Nepal",flag:"🇳🇵",tz:"Asia/Kathmandu"},
-  {name:"Khartoum",country:"Sudan",flag:"🇸🇩",tz:"Africa/Khartoum"},
-  {name:"Kiev",country:"Ukraine",flag:"🇺🇦",tz:"Europe/Kiev"},
-  {name:"Kinshasa",country:"DRC",flag:"🇨🇩",tz:"Africa/Kinshasa"},
-  {name:"Kuala Lumpur",country:"Malaysia",flag:"🇲🇾",tz:"Asia/Kuala_Lumpur"},
-  {name:"Kuwait City",country:"Kuwait",flag:"🇰🇼",tz:"Asia/Kuwait"},
-  {name:"Lagos",country:"Nigeria",flag:"🇳🇬",tz:"Africa/Lagos"},
-  {name:"Lahore",country:"Pakistan",flag:"🇵🇰",tz:"Asia/Karachi"},
-  {name:"La Paz",country:"Bolivia",flag:"🇧🇴",tz:"America/La_Paz"},
-  {name:"Lima",country:"Peru",flag:"🇵🇪",tz:"America/Lima"},
-  {name:"Lisbon",country:"Portugal",flag:"🇵🇹",tz:"Europe/Lisbon"},
-  {name:"London",country:"UK",flag:"🇬🇧",tz:"Europe/London"},
-  {name:"Los Angeles",country:"USA",flag:"🇺🇸",tz:"America/Los_Angeles"},
-  {name:"Luanda",country:"Angola",flag:"🇦🇴",tz:"Africa/Luanda"},
-  {name:"Madrid",country:"Spain",flag:"🇪🇸",tz:"Europe/Madrid"},
-  {name:"Manaus",country:"Brazil",flag:"🇧🇷",tz:"America/Manaus"},
-  {name:"Manila",country:"Philippines",flag:"🇵🇭",tz:"Asia/Manila"},
-  {name:"Melbourne",country:"Australia",flag:"🇦🇺",tz:"Australia/Melbourne"},
-  {name:"Mexico City",country:"Mexico",flag:"🇲🇽",tz:"America/Mexico_City"},
-  {name:"Miami",country:"USA",flag:"🇺🇸",tz:"America/New_York"},
-  {name:"Milan",country:"Italy",flag:"🇮🇹",tz:"Europe/Rome"},
-  {name:"Minsk",country:"Belarus",flag:"🇧🇾",tz:"Europe/Minsk"},
-  {name:"Monterrey",country:"Mexico",flag:"🇲🇽",tz:"America/Monterrey"},
-  {name:"Montevideo",country:"Uruguay",flag:"🇺🇾",tz:"America/Montevideo"},
-  {name:"Montreal",country:"Canada",flag:"🇨🇦",tz:"America/Toronto"},
-  {name:"Moscow",country:"Russia",flag:"🇷🇺",tz:"Europe/Moscow"},
-  {name:"Mumbai",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
-  {name:"Nairobi",country:"Kenya",flag:"🇰🇪",tz:"Africa/Nairobi"},
-  {name:"New York",country:"USA",flag:"🇺🇸",tz:"America/New_York"},
-  {name:"Nicosia",country:"Cyprus",flag:"🇨🇾",tz:"Asia/Nicosia"},
-  {name:"Oslo",country:"Norway",flag:"🇳🇴",tz:"Europe/Oslo"},
-  {name:"Ottawa",country:"Canada",flag:"🇨🇦",tz:"America/Toronto"},
-  {name:"Panama City",country:"Panama",flag:"🇵🇦",tz:"America/Panama"},
   {name:"Paris",country:"France",flag:"🇫🇷",tz:"Europe/Paris"},
-  {name:"Perth",country:"Australia",flag:"🇦🇺",tz:"Australia/Perth"},
-  {name:"Phoenix",country:"USA",flag:"🇺🇸",tz:"America/Phoenix"},
-  {name:"Prague",country:"Czech Rep.",flag:"🇨🇿",tz:"Europe/Prague"},
-  {name:"Quito",country:"Ecuador",flag:"🇪🇨",tz:"America/Guayaquil"},
-  {name:"Riyadh",country:"Saudi Arabia",flag:"🇸🇦",tz:"Asia/Riyadh"},
+  {name:"Lyon",country:"France",flag:"🇫🇷",tz:"Europe/Paris"},
+  {name:"Berlin",country:"Germany",flag:"🇩🇪",tz:"Europe/Berlin"},
+  {name:"Munich",country:"Germany",flag:"🇩🇪",tz:"Europe/Berlin"},
+  {name:"Hamburg",country:"Germany",flag:"🇩🇪",tz:"Europe/Berlin"},
+  {name:"Amsterdam",country:"Netherlands",flag:"🇳🇱",tz:"Europe/Amsterdam"},
+  {name:"Brussels",country:"Belgium",flag:"🇧🇪",tz:"Europe/Brussels"},
+  {name:"Madrid",country:"Spain",flag:"🇪🇸",tz:"Europe/Madrid"},
+  {name:"Barcelona",country:"Spain",flag:"🇪🇸",tz:"Europe/Madrid"},
+  {name:"Lisbon",country:"Portugal",flag:"🇵🇹",tz:"Europe/Lisbon"},
   {name:"Rome",country:"Italy",flag:"🇮🇹",tz:"Europe/Rome"},
-  {name:"San Francisco",country:"USA",flag:"🇺🇸",tz:"America/Los_Angeles"},
-  {name:"San José",country:"Costa Rica",flag:"🇨🇷",tz:"America/Costa_Rica"},
-  {name:"Santiago",country:"Chile",flag:"🇨🇱",tz:"America/Santiago"},
-  {name:"São Paulo",country:"Brazil",flag:"🇧🇷",tz:"America/Sao_Paulo"},
-  {name:"Seattle",country:"USA",flag:"🇺🇸",tz:"America/Los_Angeles"},
-  {name:"Seoul",country:"South Korea",flag:"🇰🇷",tz:"Asia/Seoul"},
-  {name:"Shanghai",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
-  {name:"Singapore",country:"Singapore",flag:"🇸🇬",tz:"Asia/Singapore"},
-  {name:"Sofia",country:"Bulgaria",flag:"🇧🇬",tz:"Europe/Sofia"},
-  {name:"Stockholm",country:"Sweden",flag:"🇸🇪",tz:"Europe/Stockholm"},
-  {name:"Sydney",country:"Australia",flag:"🇦🇺",tz:"Australia/Sydney"},
-  {name:"Taipei",country:"Taiwan",flag:"🇹🇼",tz:"Asia/Taipei"},
-  {name:"Tashkent",country:"Uzbekistan",flag:"🇺🇿",tz:"Asia/Tashkent"},
-  {name:"Tbilisi",country:"Georgia",flag:"🇬🇪",tz:"Asia/Tbilisi"},
-  {name:"Tehran",country:"Iran",flag:"🇮🇷",tz:"Asia/Tehran"},
-  {name:"Tel Aviv",country:"Israel",flag:"🇮🇱",tz:"Asia/Jerusalem"},
-  {name:"Tokyo",country:"Japan",flag:"🇯🇵",tz:"Asia/Tokyo"},
-  {name:"Toronto",country:"Canada",flag:"🇨🇦",tz:"America/Toronto"},
-  {name:"Tunis",country:"Tunisia",flag:"🇹🇳",tz:"Africa/Tunis"},
-  {name:"Vancouver",country:"Canada",flag:"🇨🇦",tz:"America/Vancouver"},
+  {name:"Milan",country:"Italy",flag:"🇮🇹",tz:"Europe/Rome"},
+  {name:"Zurich",country:"Switzerland",flag:"🇨🇭",tz:"Europe/Zurich"},
   {name:"Vienna",country:"Austria",flag:"🇦🇹",tz:"Europe/Vienna"},
   {name:"Warsaw",country:"Poland",flag:"🇵🇱",tz:"Europe/Warsaw"},
-  {name:"Washington DC",country:"USA",flag:"🇺🇸",tz:"America/New_York"},
-  {name:"Yangon",country:"Myanmar",flag:"🇲🇲",tz:"Asia/Rangoon"},
-  {name:"Yerevan",country:"Armenia",flag:"🇦🇲",tz:"Asia/Yerevan"},
-  {name:"Zürich",country:"Switzerland",flag:"🇨🇭",tz:"Europe/Zurich"},
+  {name:"Prague",country:"Czech Republic",flag:"🇨🇿",tz:"Europe/Prague"},
+  {name:"Budapest",country:"Hungary",flag:"🇭🇺",tz:"Europe/Budapest"},
+  {name:"Bucharest",country:"Romania",flag:"🇷🇴",tz:"Europe/Bucharest"},
+  {name:"Sofia",country:"Bulgaria",flag:"🇧🇬",tz:"Europe/Sofia"},
+  {name:"Athens",country:"Greece",flag:"🇬🇷",tz:"Europe/Athens"},
+  {name:"Helsinki",country:"Finland",flag:"🇫🇮",tz:"Europe/Helsinki"},
+  {name:"Stockholm",country:"Sweden",flag:"🇸🇪",tz:"Europe/Stockholm"},
+  {name:"Oslo",country:"Norway",flag:"🇳🇴",tz:"Europe/Oslo"},
+  {name:"Copenhagen",country:"Denmark",flag:"🇩🇰",tz:"Europe/Copenhagen"},
+  {name:"Reykjavik",country:"Iceland",flag:"🇮🇸",tz:"Atlantic/Reykjavik"},
+  {name:"Istanbul",country:"Turkey",flag:"🇹🇷",tz:"Europe/Istanbul"},
+  {name:"Kyiv",country:"Ukraine",flag:"🇺🇦",tz:"Europe/Kyiv"},
+  {name:"Minsk",country:"Belarus",flag:"🇧🇾",tz:"Europe/Minsk"},
+  {name:"Moscow",country:"Russia",flag:"🇷🇺",tz:"Europe/Moscow"},
+  {name:"St. Petersburg",country:"Russia",flag:"🇷🇺",tz:"Europe/Moscow"},
+  {name:"Novosibirsk",country:"Russia",flag:"🇷🇺",tz:"Asia/Novosibirsk"},
+  {name:"Vladivostok",country:"Russia",flag:"🇷🇺",tz:"Asia/Vladivostok"},
+  {name:"Riyadh",country:"Saudi Arabia",flag:"🇸🇦",tz:"Asia/Riyadh"},
+  {name:"Dubai",country:"UAE",flag:"🇦🇪",tz:"Asia/Dubai"},
+  {name:"Abu Dhabi",country:"UAE",flag:"🇦🇪",tz:"Asia/Dubai"},
+  {name:"Doha",country:"Qatar",flag:"🇶🇦",tz:"Asia/Qatar"},
+  {name:"Kuwait City",country:"Kuwait",flag:"🇰🇼",tz:"Asia/Kuwait"},
+  {name:"Bahrain",country:"Bahrain",flag:"🇧🇭",tz:"Asia/Bahrain"},
+  {name:"Tel Aviv",country:"Israel",flag:"🇮🇱",tz:"Asia/Jerusalem"},
+  {name:"Cairo",country:"Egypt",flag:"🇪🇬",tz:"Africa/Cairo"},
+  {name:"Lagos",country:"Nigeria",flag:"🇳🇬",tz:"Africa/Lagos"},
+  {name:"Nairobi",country:"Kenya",flag:"🇰🇪",tz:"Africa/Nairobi"},
+  {name:"Johannesburg",country:"South Africa",flag:"🇿🇦",tz:"Africa/Johannesburg"},
+  {name:"Cape Town",country:"South Africa",flag:"🇿🇦",tz:"Africa/Johannesburg"},
+  {name:"Casablanca",country:"Morocco",flag:"🇲🇦",tz:"Africa/Casablanca"},
+  {name:"Accra",country:"Ghana",flag:"🇬🇭",tz:"Africa/Accra"},
+  {name:"Addis Ababa",country:"Ethiopia",flag:"🇪🇹",tz:"Africa/Addis_Ababa"},
+  {name:"Karachi",country:"Pakistan",flag:"🇵🇰",tz:"Asia/Karachi"},
+  {name:"Lahore",country:"Pakistan",flag:"🇵🇰",tz:"Asia/Karachi"},
+  {name:"Mumbai",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
+  {name:"Delhi",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
+  {name:"Bangalore",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
+  {name:"Chennai",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
+  {name:"Kolkata",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
+  {name:"Hyderabad",country:"India",flag:"🇮🇳",tz:"Asia/Kolkata"},
+  {name:"Colombo",country:"Sri Lanka",flag:"🇱🇰",tz:"Asia/Colombo"},
+  {name:"Dhaka",country:"Bangladesh",flag:"🇧🇩",tz:"Asia/Dhaka"},
+  {name:"Kathmandu",country:"Nepal",flag:"🇳🇵",tz:"Asia/Kathmandu"},
+  {name:"Tashkent",country:"Uzbekistan",flag:"🇺🇿",tz:"Asia/Tashkent"},
+  {name:"Almaty",country:"Kazakhstan",flag:"🇰🇿",tz:"Asia/Almaty"},
+  {name:"Tehran",country:"Iran",flag:"🇮🇷",tz:"Asia/Tehran"},
+  {name:"Baghdad",country:"Iraq",flag:"🇮🇶",tz:"Asia/Baghdad"},
+  {name:"Bangkok",country:"Thailand",flag:"🇹🇭",tz:"Asia/Bangkok"},
+  {name:"Ho Chi Minh City",country:"Vietnam",flag:"🇻🇳",tz:"Asia/Ho_Chi_Minh"},
+  {name:"Hanoi",country:"Vietnam",flag:"🇻🇳",tz:"Asia/Bangkok"},
+  {name:"Kuala Lumpur",country:"Malaysia",flag:"🇲🇾",tz:"Asia/Kuala_Lumpur"},
+  {name:"Singapore",country:"Singapore",flag:"🇸🇬",tz:"Asia/Singapore"},
+  {name:"Jakarta",country:"Indonesia",flag:"🇮🇩",tz:"Asia/Jakarta"},
+  {name:"Manila",country:"Philippines",flag:"🇵🇭",tz:"Asia/Manila"},
+  {name:"Taipei",country:"Taiwan",flag:"🇹🇼",tz:"Asia/Taipei"},
+  {name:"Hong Kong",country:"Hong Kong",flag:"🇭🇰",tz:"Asia/Hong_Kong"},
+  {name:"Shanghai",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
+  {name:"Beijing",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
+  {name:"Shenzhen",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
+  {name:"Guangzhou",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
+  {name:"Chengdu",country:"China",flag:"🇨🇳",tz:"Asia/Shanghai"},
+  {name:"Seoul",country:"South Korea",flag:"🇰🇷",tz:"Asia/Seoul"},
+  {name:"Busan",country:"South Korea",flag:"🇰🇷",tz:"Asia/Seoul"},
+  {name:"Tokyo",country:"Japan",flag:"🇯🇵",tz:"Asia/Tokyo"},
+  {name:"Osaka",country:"Japan",flag:"🇯🇵",tz:"Asia/Tokyo"},
+  {name:"Fukuoka",country:"Japan",flag:"🇯🇵",tz:"Asia/Tokyo"},
+  {name:"Sydney",country:"Australia",flag:"🇦🇺",tz:"Australia/Sydney"},
+  {name:"Melbourne",country:"Australia",flag:"🇦🇺",tz:"Australia/Melbourne"},
+  {name:"Brisbane",country:"Australia",flag:"🇦🇺",tz:"Australia/Brisbane"},
+  {name:"Perth",country:"Australia",flag:"🇦🇺",tz:"Australia/Perth"},
+  {name:"Adelaide",country:"Australia",flag:"🇦🇺",tz:"Australia/Adelaide"},
+  {name:"Auckland",country:"New Zealand",flag:"🇳🇿",tz:"Pacific/Auckland"},
+  {name:"Christchurch",country:"New Zealand",flag:"🇳🇿",tz:"Pacific/Auckland"},
+  {name:"Toronto",country:"Canada",flag:"🇨🇦",tz:"America/Toronto"},
+  {name:"Vancouver",country:"Canada",flag:"🇨🇦",tz:"America/Vancouver"},
+  {name:"Montreal",country:"Canada",flag:"🇨🇦",tz:"America/Toronto"},
+  {name:"Calgary",country:"Canada",flag:"🇨🇦",tz:"America/Denver"},
+  {name:"Mexico City",country:"Mexico",flag:"🇲🇽",tz:"America/Mexico_City"},
+  {name:"Guadalajara",country:"Mexico",flag:"🇲🇽",tz:"America/Mexico_City"},
+  {name:"São Paulo",country:"Brazil",flag:"🇧🇷",tz:"America/Sao_Paulo"},
+  {name:"Rio de Janeiro",country:"Brazil",flag:"🇧🇷",tz:"America/Sao_Paulo"},
+  {name:"Brasília",country:"Brazil",flag:"🇧🇷",tz:"America/Sao_Paulo"},
+  {name:"Buenos Aires",country:"Argentina",flag:"🇦🇷",tz:"America/Argentina/Buenos_Aires"},
+  {name:"Santiago",country:"Chile",flag:"🇨🇱",tz:"America/Santiago"},
+  {name:"Lima",country:"Peru",flag:"🇵🇪",tz:"America/Lima"},
+  {name:"Bogotá",country:"Colombia",flag:"🇨🇴",tz:"America/Bogota"},
+  {name:"Caracas",country:"Venezuela",flag:"🇻🇪",tz:"America/Caracas"},
 ];
 
-// ─── HOUR ZONES ───────────────────────────────────────────────────────────────
-// ideal: 09–17 | possible: 07–09, 17–20 | stretch: 06–07, 20–22 | off: rest
-function hourType(h){
-  if(h>=9&&h<17)  return 'ideal';
-  if(h>=7&&h<9)   return 'possible';
-  if(h>=17&&h<20) return 'possible';
-  if(h>=6&&h<7)   return 'stretch';
-  if(h>=20&&h<22) return 'stretch';
+// ─── STARTUP: compute all offsets once ────────────────────────────────────────
+const offsetCache = {}; // tz → offset in minutes
+
+(function computeOffsets() {
+  const now = Date.now();
+  for (const city of CITIES) {
+    if (offsetCache[city.tz] !== undefined) continue;
+    try {
+      // Get the UTC offset by comparing local time to UTC
+      const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: city.tz,
+        hour: 'numeric', minute: 'numeric', hour12: false,
+        timeZoneName: 'shortOffset'
+      });
+      const parts = fmt.formatToParts(now);
+      // Use a more reliable method: format date parts and compute difference
+      const localFmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: city.tz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      });
+      const localParts = localFmt.formatToParts(now);
+      const get = (type) => parseInt(localParts.find(p => p.type === type)?.value || '0', 10);
+      const localDate = new Date(Date.UTC(get('year'), get('month')-1, get('day'), get('hour'), get('minute'), get('second')));
+      const offsetMs = localDate.getTime() - now;
+      offsetCache[city.tz] = Math.round(offsetMs / 60000);
+    } catch(e) {
+      offsetCache[city.tz] = 0;
+    }
+  }
+  // Also add browser timezone
+  const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!offsetCache[browserTz]) {
+    try {
+      const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: browserTz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      });
+      const localParts = fmt.formatToParts(Date.now());
+      const get = (type) => parseInt(localParts.find(p => p.type === type)?.value || '0', 10);
+      const localDate = new Date(Date.UTC(get('year'), get('month')-1, get('day'), get('hour'), get('minute'), get('second')));
+      offsetCache[browserTz] = Math.round((localDate.getTime() - Date.now()) / 60000);
+    } catch(e) { offsetCache[browserTz] = 0; }
+  }
+})();
+
+function getOffset(tz) {
+  if (offsetCache[tz] !== undefined) return offsetCache[tz];
+  return 0;
+}
+
+function formatOffset(minutes) {
+  const sign = minutes >= 0 ? '+' : '-';
+  const abs = Math.abs(minutes);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return `GMT${sign}${h}${m ? ':' + String(m).padStart(2,'0') : ''}`;
+}
+
+// Given a UTC hour (0-23) and a city's tz, return local hour (possibly negative or >24)
+function utcToLocal(utcHour, tz) {
+  const offsetMins = getOffset(tz);
+  return utcHour + offsetMins / 60;
+}
+
+// Normalize local hour to 0-24 range for zone classification
+function hourZone(localHour) {
+  const h = ((localHour % 24) + 24) % 24;
+  if (h >= 9 && h < 17) return 'ideal';
+  if ((h >= 7 && h < 9) || (h >= 17 && h < 20)) return 'possible';
+  if ((h >= 6 && h < 7) || (h >= 20 && h < 22)) return 'stretch';
   return 'off';
 }
-// blue opacities per type
-const TYPE_OPACITY={ideal:'1',possible:'0.30',stretch:'0.11',off:'0'};
+
+function zoneScore(zone) {
+  if (zone === 'ideal') return 3;
+  if (zone === 'possible') return 2;
+  if (zone === 'stretch') return 1;
+  return 0;
+}
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let participants=[];
-let selectedCity=null;
-let pinnedIdx=-1;       // which participant's local hours show in header
-const MAX=6;
+let participants = []; // [{name, city: cityObj}]
+let activeLocalTz = null; // tz string for local time row, null = browser
+let selectedCity = null; // city object selected in autocomplete
+let acActiveIndex = -1;
+let scrubberPct = getCurrentUtcPct(); // 0-1
+let isDragging = false;
+let dragStartX = 0;
+let dragStartPct = 0;
+let tlInnerWidth = 0; // cached width of scrubber area
 
-// ─── UTILS ────────────────────────────────────────────────────────────────────
-function pad2(n){return String(Math.floor(((n%24)+24)%24)).padStart(2,'0')}
-function fmtH(h){
-  h=((h%24)+24)%24;
-  const hh=Math.floor(h),mm=Math.round((h-hh)*60);
-  return pad2(hh)+':'+String(mm).padStart(2,'0');
+function getCurrentUtcPct() {
+  const now = new Date();
+  return (now.getUTCHours() + now.getUTCMinutes() / 60) / 24;
 }
-function localH(utcH,off){return ((utcH+off)%24+24)%24}
 
-// Pre-compute all offsets once at startup — instant lookup at add-time
-const OFFSET_CACHE=Object.create(null);
-(function buildCache(){
-  const now=new Date();
-  const utcDate=new Date(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),now.getUTCHours(),now.getUTCMinutes());
-  const tzSet=[...new Set(CITIES.map(c=>c.tz))];
-  tzSet.forEach(tz=>{
-    try{
-      const f=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false,year:'numeric',month:'2-digit',day:'2-digit'});
-      const parts=f.formatToParts(now);
-      const get=type=>parseInt(parts.find(p=>p.type===type).value);
-      const localDate=new Date(get('year'),get('month')-1,get('day'),get('hour'),get('minute'));
-      let diff=(localDate-utcDate)/3600000;
-      if(diff>14)diff-=24;if(diff<-12)diff+=24;
-      OFFSET_CACHE[tz]=Math.round(diff*4)/4;
-    }catch(e){OFFSET_CACHE[tz]=0;}
-  });
-})();
-function getLiveOffset(city){return OFFSET_CACHE[city.tz]??0;}
-function visitorOffset(){return -new Date().getTimezoneOffset()/60}
-function visitorLabel(){
-  try{return Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop().replace(/_/g,' ')}
-  catch(e){return 'Local'}
+// ─── FUZZY SEARCH ─────────────────────────────────────────────────────────────
+function fuzzyMatch(query, str) {
+  query = query.toLowerCase();
+  str = str.toLowerCase();
+  if (str.startsWith(query)) return 2;
+  if (str.includes(query)) return 1;
+  return 0;
 }
-function offStr(off){
-  const s=off>=0?'+':'-',a=Math.abs(off),h=Math.floor(a),m=Math.round((a-h)*60);
-  return 'GMT'+s+h+(m?':'+String(m).padStart(2,'0'):'');
-}
-function toast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2200);
+
+function searchCities(query) {
+  if (!query || query.length < 1) return [];
+  const q = query.toLowerCase();
+  const scored = CITIES.map(c => {
+    const nm = fuzzyMatch(q, c.name);
+    const co = fuzzyMatch(q, c.country);
+    return { city: c, score: Math.max(nm * 2, co) };
+  }).filter(x => x.score > 0);
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 8).map(x => x.city);
 }
 
 // ─── AUTOCOMPLETE ─────────────────────────────────────────────────────────────
-const inpCity=document.getElementById('inp-city');
-const acEl=document.getElementById('ac-list');
-let acIdx=-1;
+const cityInput = document.getElementById('cityInput');
+const acList = document.getElementById('acList');
+const nameInput = document.getElementById('nameInput');
+const addBtn = document.getElementById('addBtn');
 
-inpCity.addEventListener('input',()=>{
-  selectedCity=null;
-  const q=inpCity.value.trim().toLowerCase();
-  if(q.length<1){acEl.style.display='none';return}
-  const hits=CITIES.filter(c=>c.name.toLowerCase().includes(q)||c.country.toLowerCase().includes(q)).slice(0,8);
-  if(!hits.length){acEl.style.display='none';return}
-  acEl.innerHTML='';acIdx=-1;
-  hits.forEach(c=>{
-    const d=document.createElement('div');
-    d.innerHTML=`<span class="ac-flag">${c.flag}</span><span>${c.name}</span><span class="ac-ctry">${c.country}</span>`;
-    d.addEventListener('mousedown',e=>{e.preventDefault();pickCity(c)});
-    acEl.appendChild(d);
-  });
-  acEl.style.display='block';
+cityInput.addEventListener('input', () => {
+  selectedCity = null;
+  acActiveIndex = -1;
+  updateAddBtn();
+  const q = cityInput.value.trim();
+  const results = searchCities(q);
+  renderAcList(results);
 });
-inpCity.addEventListener('keydown',e=>{
-  const items=acEl.querySelectorAll('div');
-  if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,items.length-1);hlAc(items);e.preventDefault()}
-  else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);hlAc(items);e.preventDefault()}
-  else if(e.key==='Enter'){acIdx>=0&&items[acIdx]?items[acIdx].dispatchEvent(new Event('mousedown')):tryAdd();e.preventDefault()}
-  else if(e.key==='Escape')acEl.style.display='none';
-});
-function hlAc(items){items.forEach((it,i)=>it.classList.toggle('hi',i===acIdx));if(acIdx>=0)items[acIdx].scrollIntoView({block:'nearest'})}
-function pickCity(c){selectedCity=c;inpCity.value=c.name+', '+c.country;acEl.style.display='none';document.getElementById('inp-name').focus()}
-document.addEventListener('click',e=>{if(!e.target.closest('.city-wrap'))acEl.style.display='none'});
 
-// ─── ADD / REMOVE ─────────────────────────────────────────────────────────────
-document.getElementById('btn-add').addEventListener('click',tryAdd);
-document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')tryAdd()});
-function tryAdd(){
-  const name=document.getElementById('inp-name').value.trim();
-  if(!name){toast('Please enter a name');return}
-  if(!selectedCity){toast('Please select a city from the list');return}
-  if(participants.length>=MAX){toast('Maximum 6 participants');return}
-  if(participants.find(p=>p.name.toLowerCase()===name.toLowerCase())){toast('That name is already added');return}
-  participants.push({name,city:selectedCity,offset:getLiveOffset(selectedCity)});
-  document.getElementById('inp-name').value='';
-  inpCity.value='';selectedCity=null;
-  render();
-  document.getElementById('inp-name').focus();
-}
-function removePerson(i){
-  participants.splice(i,1);
-  if(pinnedIdx>=participants.length)pinnedIdx=-1;
-  render();
-}
-document.getElementById('btn-clear').addEventListener('click',()=>{participants=[];pinnedIdx=-1;render()});
-
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function render(){renderPeople();renderTimeline();renderSugs();renderShare()}
-
-function renderPeople(){
-  const list=document.getElementById('people-list');
-  const emptyMsg=document.getElementById('empty-msg');
-  const clearRow=document.getElementById('clear-row');
-  if(!participants.length){
-    list.innerHTML='';list.appendChild(emptyMsg);
-    emptyMsg.style.display='block';clearRow.style.display='none';return;
+cityInput.addEventListener('keydown', (e) => {
+  const items = acList.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acActiveIndex = Math.min(acActiveIndex + 1, items.length - 1);
+    updateAcActive(items);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acActiveIndex = Math.max(acActiveIndex - 1, 0);
+    updateAcActive(items);
+  } else if (e.key === 'Enter') {
+    if (acActiveIndex >= 0 && items[acActiveIndex]) items[acActiveIndex].click();
+    else if (items.length === 1) items[0].click();
+  } else if (e.key === 'Escape') {
+    closeAc();
   }
-  emptyMsg.style.display='none';list.innerHTML='';
-  participants.forEach((p,i)=>{
-    const chip=document.createElement('div');
-    chip.className='chip';
-    chip.innerHTML=`<span class="cflag">${p.city.flag}</span>
-      <div class="cmeta"><span class="cname">${p.name}</span><span class="cdot">·</span><span class="ctz">${p.city.name} ${offStr(p.offset)}</span></div>
-      <button class="crm" aria-label="Remove">×</button>`;
-    chip.querySelector('.crm').addEventListener('click',()=>removePerson(i));
-    list.appendChild(chip);
+});
+
+cityInput.addEventListener('blur', () => setTimeout(closeAc, 150));
+
+function updateAcActive(items) {
+  items.forEach((el, i) => el.classList.toggle('active', i === acActiveIndex));
+}
+
+function renderAcList(results) {
+  if (!results.length) { closeAc(); return; }
+  acList.innerHTML = '';
+  results.forEach((c, i) => {
+    const offset = formatOffset(getOffset(c.tz));
+    const div = document.createElement('div');
+    div.className = 'ac-item';
+    div.innerHTML = `<span class="ac-flag">${c.flag}</span><span class="ac-name">${c.name}</span><span class="ac-country">${c.country}</span><span class="ac-tz">${offset}</span>`;
+    div.addEventListener('mousedown', (e) => e.preventDefault());
+    div.addEventListener('click', () => selectCity(c));
+    acList.appendChild(div);
   });
-  clearRow.style.display='flex';
+  acList.classList.add('open');
+}
+
+function selectCity(c) {
+  selectedCity = c;
+  cityInput.value = `${c.flag} ${c.name}, ${c.country}`;
+  closeAc();
+  updateAddBtn();
+  nameInput.focus();
+}
+
+function closeAc() { acList.classList.remove('open'); acList.innerHTML = ''; acActiveIndex = -1; }
+
+nameInput.addEventListener('input', updateAddBtn);
+
+function updateAddBtn() {
+  addBtn.disabled = !(nameInput.value.trim() && selectedCity && participants.length < 6);
+}
+
+addBtn.addEventListener('click', addParticipant);
+
+function addParticipant() {
+  if (!nameInput.value.trim() || !selectedCity || participants.length >= 6) return;
+  participants.push({ name: nameInput.value.trim(), city: selectedCity });
+  nameInput.value = '';
+  cityInput.value = '';
+  selectedCity = null;
+  updateAddBtn();
+  updateAll();
+}
+
+function removeParticipant(i) {
+  participants.splice(i, 1);
+  if (activeLocalTz && !participants.find(p => p.city.tz === activeLocalTz)) activeLocalTz = null;
+  updateAll();
+}
+
+function clearAll() {
+  participants = [];
+  activeLocalTz = null;
+  updateAll();
+}
+
+// ─── RENDER PARTICIPANTS LIST ──────────────────────────────────────────────────
+function renderParticipantsList() {
+  const el = document.getElementById('participantsList');
+  const footer = document.getElementById('listFooter');
+  const count = document.getElementById('countLabel');
+  el.innerHTML = '';
+  if (!participants.length) { footer.style.display = 'none'; return; }
+  footer.style.display = 'flex';
+  count.textContent = `${participants.length} of 6`;
+  participants.forEach((p, i) => {
+    const offset = formatOffset(getOffset(p.city.tz));
+    const isActive = (activeLocalTz === p.city.tz) || (!activeLocalTz && i === 0);
+    const row = document.createElement('div');
+    row.className = 'participant-row' + (isActive ? ' active-local' : '');
+    row.title = 'Click to show their local time on timeline';
+    row.innerHTML = `
+      <span class="p-flag">${p.city.flag}</span>
+      <span class="p-name">${p.name}</span>
+      <span class="p-city">${p.city.name}</span>
+      <span class="p-offset">${offset}</span>
+      <button class="btn btn-danger" title="Remove">✕</button>
+    `;
+    row.querySelector('.btn-danger').addEventListener('click', (e) => { e.stopPropagation(); removeParticipant(i); });
+    row.addEventListener('click', () => { activeLocalTz = p.city.tz; updateAll(); });
+    el.appendChild(row);
+  });
+  updateAddBtn();
 }
 
 // ─── TIMELINE ─────────────────────────────────────────────────────────────────
-// scrubber state — persists across re-renders
-let scrubPct=null; // null = "now"
+function renderTimeline() {
+  const inner = document.getElementById('timelineInner');
+  const legend = document.getElementById('tlLegend');
+  const hint = document.getElementById('tlHint');
+  const emptyEl = document.getElementById('timelineEmpty');
 
-function getNowPct(){
-  const now=new Date();
-  return (now.getUTCHours()+now.getUTCMinutes()/60)/24;
+  if (!participants.length) {
+    inner.innerHTML = '<div class="empty-state" id="timelineEmpty">Add participants to see the timeline.</div>';
+    legend.style.display = 'none';
+    hint.style.display = 'none';
+    return;
+  }
+
+  legend.style.display = 'flex';
+  hint.style.display = 'block';
+
+  // Determine local tz to show
+  const localTz = activeLocalTz || (participants[0] ? participants[0].city.tz : Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const localOffset = getOffset(localTz);
+  const localLabel = document.getElementById('localTzLabel');
+  if (localLabel) {
+    const activeName = activeLocalTz ? (participants.find(p => p.city.tz === activeLocalTz)?.name || '') : participants[0]?.name || '';
+    localLabel.textContent = `— local time: ${activeName}`;
+  }
+
+  // Precompute zones per participant per UTC hour
+  const pZones = participants.map(p => {
+    const zones = [];
+    for (let h = 0; h < 24; h++) {
+      const localH = utcToLocal(h, p.city.tz);
+      zones.push(hourZone(localH));
+    }
+    return zones;
+  });
+
+  // Overlap row
+  const overlapZones = [];
+  for (let h = 0; h < 24; h++) {
+    const hourZones = participants.map((_, i) => pZones[i][h]);
+    const scores = hourZones.map(z => zoneScore(z));
+    const minScore = Math.min(...scores);
+    const allIdeal = hourZones.every(z => z === 'ideal');
+    const anyOff = hourZones.some(z => z === 'off');
+    if (anyOff) overlapZones.push('ov-none');
+    else if (allIdeal) overlapZones.push('ov-all-ideal');
+    else if (minScore >= 2) overlapZones.push('ov-mixed');
+    else if (minScore >= 1) overlapZones.push('ov-feasible');
+    else overlapZones.push('ov-none');
+  }
+
+  // Build HTML
+  let html = '';
+
+  // UTC header
+  html += `<div class="tl-headers">`;
+  html += `<div class="tl-hour-row"><div class="tl-label tl-hour-cell">UTC</div>`;
+  for (let h = 0; h < 24; h++) {
+    html += `<div class="tl-hour-cell">${String(h).padStart(2,'0')}</div>`;
+  }
+  html += `</div>`;
+
+  // Local time header
+  const localName = participants.find(p => p.city.tz === localTz)?.name || 'Local';
+  html += `<div class="tl-hour-row" style="opacity:0.7"><div class="tl-label tl-hour-cell" style="font-size:0.64rem">${localName}</div>`;
+  for (let h = 0; h < 24; h++) {
+    const lh = ((utcToLocal(h, localTz) % 24) + 24) % 24;
+    const lhInt = Math.floor(lh);
+    html += `<div class="tl-hour-cell">${String(lhInt).padStart(2,'0')}</div>`;
+  }
+  html += `</div></div>`;
+
+  // Participant rows
+  participants.forEach((p, pi) => {
+    const isActive = localTz === p.city.tz;
+    html += `<div class="tl-row" data-pi="${pi}">`;
+    html += `<div class="tl-row-label${isActive ? ' active-local' : ''}" data-tz="${p.city.tz}">${p.name}</div>`;
+    for (let h = 0; h < 24; h++) {
+      html += `<div class="tl-cell ${pZones[pi][h]}"></div>`;
+    }
+    html += `<div class="tl-inline-tooltip" id="tip-${pi}"></div>`;
+    html += `</div>`;
+  });
+
+  // Overlap row
+  html += `<div class="tl-row tl-overlap-row" style="margin-top:6px">`;
+  html += `<div class="tl-row-label overlap-label">Overlap</div>`;
+  for (let h = 0; h < 24; h++) {
+    html += `<div class="tl-cell ${overlapZones[h]}"></div>`;
+  }
+  html += `</div>`;
+
+  // Scrubber container
+  html += `<div class="scrubber-container" id="scrubberContainer">
+    <div class="scrubber-line" id="scrubberLine">
+      <div class="scrubber-tooltip" id="scrubberTooltip"></div>
+    </div>
+  </div>`;
+
+  inner.innerHTML = html;
+
+  // Attach label click handlers
+  inner.querySelectorAll('.tl-row-label[data-tz]').forEach(el => {
+    el.addEventListener('click', () => {
+      activeLocalTz = el.dataset.tz;
+      updateAll();
+    });
+  });
+
+  // Position scrubber
+  positionScrubber(scrubberPct);
+
+  // Scrubber drag
+  setupScrubberDrag();
 }
 
-function renderTimeline(){
-  const card=document.getElementById('card-tl');
-  if(!participants.length){card.style.display='none';return}
-  card.style.display='block';
+function positionScrubber(pct) {
+  const line = document.getElementById('scrubberLine');
+  const tooltip = document.getElementById('scrubberTooltip');
+  if (!line) return;
 
-  const grid=document.getElementById('tl-grid');
-  grid.innerHTML='';
-  const n=participants.length;
+  const clampedPct = Math.max(0, Math.min(1, pct));
+  line.style.left = (clampedPct * 100) + '%';
 
-  // pre-compute hour types per person
-  const personTypes=participants.map(p=>
-    Array.from({length:24},(_,h)=>hourType(localH(h,p.offset)))
-  );
+  // UTC time
+  const utcH = clampedPct * 24;
+  const utcHInt = Math.floor(utcH);
+  const utcM = Math.round((utcH - utcHInt) * 60);
+  const utcStr = `${String(utcHInt).padStart(2,'0')}:${String(utcM).padStart(2,'0')} UTC`;
+  if (tooltip) tooltip.textContent = utcStr;
 
-  // overlap scores per UTC hour
-  const scores=Array.from({length:24},(_,h)=>{
-    let ideal=0,possible=0,stretch=0;
-    personTypes.forEach(pt=>{
-      if(pt[h]==='ideal')    ideal++;
-      else if(pt[h]==='possible') possible++;
-      else if(pt[h]==='stretch')  stretch++;
-    });
-    return{ideal,possible,stretch,total:ideal+possible+stretch};
+  // Update per-participant tooltips
+  participants.forEach((p, i) => {
+    const tip = document.getElementById(`tip-${i}`);
+    if (!tip) return;
+    const localH = ((utcToLocal(utcHInt, p.city.tz) + (utcM/60)) % 24 + 24) % 24;
+    const lhInt = Math.floor(localH);
+    const lm = Math.round((localH - lhInt) * 60);
+    const timeStr = `${String(lhInt).padStart(2,'0')}:${String(lm).padStart(2,'0')}`;
+    tip.textContent = timeStr;
+    const tipLeft = clampedPct * 100;
+    tip.style.left = `calc(${tipLeft}% + 6px)`;
+    if (clampedPct > 0.85) tip.style.left = `calc(${tipLeft}% - 48px)`;
+  });
+}
+
+function setupScrubberDrag() {
+  const line = document.getElementById('scrubberLine');
+  const container = document.getElementById('scrubberContainer');
+  if (!line || !container) return;
+
+  // Capture container rect once when drag starts; store as closure variable
+  let containerLeft = 0;
+  let containerWidth = 0;
+
+  function onMouseMove(e) {
+    if (!isDragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const raw = (clientX - containerLeft) / containerWidth;
+    scrubberPct = Math.max(0, Math.min(1, raw));
+    positionScrubber(scrubberPct);
+  }
+
+  function onMouseUp() {
+    isDragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('touchmove', onMouseMove);
+    document.removeEventListener('touchend', onMouseUp);
+  }
+
+  line.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    const rect = container.getBoundingClientRect();
+    containerLeft = rect.left;
+    containerWidth = rect.width;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   });
 
-  // ── UTC header row ────────────────────────────────────────────────────────
-  const hdrArea=document.createElement('div');
-  hdrArea.className='tl-hdr-area';
-
-  const utcRow=document.createElement('div');
-  utcRow.className='tl-hdr-row';
-  const utcLbl=document.createElement('div');
-  utcLbl.className='tl-rlabel';utcLbl.textContent='UTC';
-  const utcHrs=document.createElement('div');
-  utcHrs.className='tl-hlabels';
-  for(let h=0;h<24;h+=2){
-    const l=document.createElement('div');
-    l.className='tl-hl';l.textContent=pad2(h);
-    utcHrs.appendChild(l);
-  }
-  utcRow.appendChild(utcLbl);utcRow.appendChild(utcHrs);
-  hdrArea.appendChild(utcRow);
-
-  // ── Local time row ────────────────────────────────────────────────────────
-  const localRow=document.createElement('div');
-  localRow.className='tl-local-row';
-  const localTag=document.createElement('div');
-  localTag.className='tl-ltag';
-  const localHrsEl=document.createElement('div');
-  localHrsEl.className='tl-lhours';
-  localRow.appendChild(localTag);localRow.appendChild(localHrsEl);
-  hdrArea.appendChild(localRow);
-  grid.appendChild(hdrArea);
-
-  // Function to refresh local row — closes over localTag & localHrsEl (stable refs)
-  function refreshLocalRow(utcFrac){
-    localHrsEl.innerHTML='';
-    let off,label;
-    if(pinnedIdx>=0&&pinnedIdx<participants.length){
-      const p=participants[pinnedIdx];
-      off=p.offset;label=p.name;
-      localTag.innerHTML=`<span class="ldot"></span><span class="lname">${label}</span>`;
-      localTag.style.color='var(--blue)';
-    }else{
-      off=visitorOffset();label=visitorLabel();
-      localTag.innerHTML=`<span class="ldot" style="background:var(--text3)"></span><span class="lname" style="color:var(--text3)">${label}</span>`;
-    }
-    // Show local time at the scrubber position if dragging, else every 2h
-    if(utcFrac!==undefined){
-      // Show single time at scrub position — handled by per-row tips
-      // Just show even hours translated
-    }
-    for(let h=0;h<24;h+=2){
-      const lh=localH(h,off);
-      const l=document.createElement('div');
-      l.className='tl-ll';l.textContent=pad2(lh);
-      localHrsEl.appendChild(l);
-    }
-  }
-
-  // ── Hint ─────────────────────────────────────────────────────────────────
-  const hint=document.createElement('div');
-  hint.className='tl-hint';
-  hint.textContent='👆 Click a name to pin their local hours  ·  drag the time cursor to explore';
-  grid.appendChild(hint);
-
-  // ── Person rows ───────────────────────────────────────────────────────────
-  const nameEls=[];
-  const rowEls=[];
-  const rowTips=[];
-
-  participants.forEach((p,pi)=>{
-    const row=document.createElement('div');
-    row.className='tl-row';
-
-    const nameEl=document.createElement('div');
-    nameEl.className='tl-name';
-    nameEl.title=`Pin ${p.name}'s local hours`;
-    nameEl.innerHTML=`<span>${p.city.flag}</span><span>${p.name}</span>`;
-    nameEl.addEventListener('click',()=>{
-      pinnedIdx=(pinnedIdx===pi)?-1:pi;
-      refreshLocalRow();refreshNameHL();
-    });
-    nameEls.push(nameEl);
-
-    const blocksEl=document.createElement('div');
-    blocksEl.className='tl-blocks';
-    personTypes[pi].forEach(type=>{
-      const b=document.createElement('div');
-      b.className='tl-b';
-      if(type==='off'){
-        b.style.background='var(--border)';
-      }else{
-        b.style.background='var(--blue)';
-        b.style.opacity=TYPE_OPACITY[type];
-      }
-      blocksEl.appendChild(b);
-    });
-
-    // per-row scrubber tip
-    const rowTip=document.createElement('div');
-    rowTip.className='row-tip';
-    rowTip.style.right='auto'; // we'll position left dynamically
-
-    row.appendChild(nameEl);row.appendChild(blocksEl);row.appendChild(rowTip);
-    grid.appendChild(row);
-    rowEls.push({row,blocksEl});
-    rowTips.push(rowTip);
+  line.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    const rect = container.getBoundingClientRect();
+    containerLeft = rect.left;
+    containerWidth = rect.width;
+    document.addEventListener('touchmove', onMouseMove, { passive: false });
+    document.addEventListener('touchend', onMouseUp);
   });
 
-  function refreshNameHL(){
-    nameEls.forEach((el,pi)=>{
-      el.classList.toggle('pinned',pinnedIdx===pi);
-    });
-  }
-
-  // ── Separator ─────────────────────────────────────────────────────────────
-  const sep=document.createElement('div');
-  sep.className='tl-sep';
-  grid.appendChild(sep);
-
-  // ── Overlap row ───────────────────────────────────────────────────────────
-  const ovRow=document.createElement('div');
-  ovRow.className='tl-ov-row';
-  const ovLabel=document.createElement('div');
-  ovLabel.className='tl-ov-label';ovLabel.textContent='Overlap';
-
-  const ovWrap=document.createElement('div');
-  ovWrap.className='tl-ov-wrap';
-
-  const ovBlocks=document.createElement('div');
-  ovBlocks.className='tl-ov-blocks';
-  scores.forEach(({ideal,possible,stretch,total})=>{
-    const b=document.createElement('div');
-    b.className='tl-ovb';
-    if(ideal===n)              b.style.background='#15803d';
-    else if(total===n&&ideal>0)    b.style.background='#4ade80';
-    else if(total===n&&possible>0) b.style.background='#fcd34d';
-    else if(total===n&&stretch===n)b.style.background='#fb923c';
-    else                       b.style.background='var(--border)';
-    ovBlocks.appendChild(b);
+  // Click on container to jump
+  container.addEventListener('click', (e) => {
+    if (e.target === line) return;
+    const rect = container.getBoundingClientRect();
+    scrubberPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    positionScrubber(scrubberPct);
   });
 
-  // Scrubber lives inside ovWrap — same coordinate space as ovBlocks
-  const scrubber=document.createElement('div');
-  scrubber.className='scrubber';
-
-  const scrubTip=document.createElement('div');
-  scrubTip.className='scrub-tip';
-
-  // fullLine also lives inside ovWrap — extends UPWARD through person rows
-  // ovWrap is position:relative and height:28px
-  // We extend the line upward by making top negative
-  const fullLine=document.createElement('div');
-  fullLine.className='now-full-line';
-  fullLine.style.bottom='0';
-  fullLine.style.top='auto'; // will set dynamically
-
-  ovWrap.appendChild(ovBlocks);
-  ovWrap.appendChild(fullLine);
-  ovWrap.appendChild(scrubber);
-  ovWrap.appendChild(scrubTip);
-  ovRow.appendChild(ovLabel);
-  ovRow.appendChild(ovWrap);
-  grid.appendChild(ovRow);
-
-  // ── Scrubber positioning ──────────────────────────────────────────────────
-  // Everything is relative to ovWrap/ovBlocks — single coordinate space, no offset confusion
-  function positionScrubber(pct, showTips){
-    pct=Math.max(0,Math.min(1,pct));
-    const w=ovBlocks.offsetWidth||440;
-    const left=pct*w;
-    const utcFrac=pct*24;
-
-    // Scrubber line + handle (inside ovWrap)
-    scrubber.style.left=left+'px';
-
-    // UTC tooltip above scrubber
-    scrubTip.style.left=left+'px';
-    scrubTip.textContent=fmtH(utcFrac)+' UTC';
-    scrubTip.classList.toggle('show',showTips);
-
-    // fullLine: same left as scrubber, extends from top of person rows down to bottom of ovWrap
-    // Measure how far up we need to go from ovWrap top to the top of the first person row
-    const ovWrapTop=ovWrap.getBoundingClientRect().top;
-    const firstRowTop=rowEls.length>0?rowEls[0].row.getBoundingClientRect().top:ovWrapTop;
-    const upDist=Math.max(ovWrapTop-firstRowTop,0);
-    fullLine.style.left=left+'px';
-    fullLine.style.height=(upDist+28)+'px'; // 28 = overlap row height
-    fullLine.style.bottom='0';
-    fullLine.style.top='auto';
-    // Extend up by moving top to negative
-    const totalH=upDist+28;
-    fullLine.style.top=(-upDist)+'px';
-    fullLine.style.height=totalH+'px';
-    fullLine.style.bottom='auto';
-
-    // Per-row tips: each positioned inside its own .tl-row at the right x
-    rowEls.forEach(({row,blocksEl},pi)=>{
-      const p=participants[pi];
-      const lh=localH(utcFrac,p.offset);
-      const type=hourType(lh);
-      const tip=rowTips[pi];
-
-      // x position: offset of blocksEl left within its row + left within blocks
-      // blocksEl starts after the 100px name column; tip floats just right of the line
-      const blockLeft=blocksEl.offsetLeft; // should be ~100px
-      tip.style.left=(blockLeft+left+5)+'px';
-      tip.style.top='50%';
-      tip.style.transform='translateY(-50%)';
-
-      let label=fmtH(lh);
-      if((utcFrac+p.offset)>=24) label+=' +1';
-      else if((utcFrac+p.offset)<0) label+=' −1';
-      tip.textContent=label;
-
-      const bgColor=type==='ideal'?'#15803d'
-        :type==='possible'?'#d97706'
-        :type==='stretch'?'#ea580c'
-        :'#6b7280';
-      tip.style.background=bgColor;
-      tip.classList.toggle('show',showTips);
-    });
-  }
-
-  function getBlocksWidth(){return ovBlocks.offsetWidth||440} // kept for safety
-
-  function pctFromEvent(e){
-    const rect=ovBlocks.getBoundingClientRect();
-    const clientX=e.touches?e.touches[0].clientX:e.clientX;
-    return Math.max(0,Math.min(1,(clientX-rect.left)/rect.width));
-  }
-
-  let dragging=false;
-  function onDragStart(e){
-    e.preventDefault();dragging=true;
-    const pct=pctFromEvent(e);
-    scrubPct=pct;positionScrubber(pct,true);
-  }
-  function onDragMove(e){
-    if(!dragging)return;e.preventDefault();
-    const pct=pctFromEvent(e);
-    scrubPct=pct;positionScrubber(pct,true);
-  }
-  function onDragEnd(){
-    if(!dragging)return;dragging=false;
-    positionScrubber(scrubPct,false);
-  }
-
-  [scrubber,ovBlocks].forEach(el=>{
-    el.addEventListener('mousedown',onDragStart);
-    el.addEventListener('touchstart',onDragStart,{passive:false});
+  // Double-click to reset
+  container.addEventListener('dblclick', () => {
+    scrubberPct = getCurrentUtcPct();
+    positionScrubber(scrubberPct);
   });
-  document.addEventListener('mousemove',onDragMove);
-  document.addEventListener('touchmove',onDragMove,{passive:false});
-  document.addEventListener('mouseup',onDragEnd);
-  document.addEventListener('touchend',onDragEnd);
-
-  ovBlocks.addEventListener('dblclick',()=>{
-    scrubPct=getNowPct();positionScrubber(scrubPct,false);
+  line.addEventListener('dblclick', () => {
+    scrubberPct = getCurrentUtcPct();
+    positionScrubber(scrubberPct);
   });
-
-  // Single rAF after all DOM is appended — layout is stable by then
-  requestAnimationFrame(()=>{
-    if(scrubPct===null) scrubPct=getNowPct();
-    positionScrubber(scrubPct,false);
-    refreshLocalRow();
-    refreshNameHL();
-  });
-
-  // ── Legend ────────────────────────────────────────────────────────────────
-  document.getElementById('tl-legend').innerHTML=`
-    <div class="leg-item"><div class="leg-block" style="background:var(--blue)"></div>Ideal (09–17)</div>
-    <div class="leg-item"><div class="leg-block" style="background:var(--blue);opacity:.30"></div>Possible (07–09 · 17–20)</div>
-    <div class="leg-item"><div class="leg-block" style="background:var(--blue);opacity:.11"></div>Stretch (06–07 · 20–22)</div>
-    <div class="leg-item"><div class="leg-block" style="background:#15803d"></div>All ideal</div>
-    <div class="leg-item"><div class="leg-block" style="background:#4ade80"></div>All covered</div>
-    <div class="leg-item"><div class="leg-block" style="background:#fcd34d"></div>Workable</div>
-    <div class="leg-item"><span style="display:inline-block;width:10px;height:10px;background:var(--now);border-radius:50%"></span>Time cursor</div>`;
-
-  // ── Summary badge ─────────────────────────────────────────────────────────
-  const fullIdeal   =scores.filter(s=>s.ideal===n).length;
-  const fullCovered =scores.filter(s=>s.total===n&&s.ideal>0).length;
-  const fullFeasible=scores.filter(s=>s.total===n&&s.ideal===0).length;
-  const sumEl=document.getElementById('ov-summary');
-  sumEl.innerHTML='';
-  const b=document.createElement('div');
-  if(fullIdeal>0){b.className='badge badge-green';b.innerHTML=`<span class="bdot bdot-g"></span>${fullIdeal}h everyone in core hours`}
-  else if(fullCovered>0){b.className='badge badge-green';b.innerHTML=`<span class="bdot bdot-g"></span>${fullCovered}h all covered (mixed)`}
-  else if(fullFeasible>0){b.className='badge badge-yellow';b.innerHTML=`<span class="bdot bdot-y"></span>${fullFeasible}h workable — early/late`}
-  else{b.className='badge badge-gray';b.textContent='No full overlap — best compromise below'}
-  sumEl.appendChild(b);
 }
 
 // ─── SUGGESTIONS ──────────────────────────────────────────────────────────────
-function renderSugs(){
-  const card=document.getElementById('card-sugs');
-  if(participants.length<2){card.style.display='none';return}
-  card.style.display='block';
-  const el=document.getElementById('sugs');
-  el.innerHTML='';
-  const n=participants.length;
-
-  const scored=Array.from({length:24},(_,utcH)=>{
-    let ideal=0,possible=0,stretch=0;
-    participants.forEach(p=>{
-      const t=hourType(localH(utcH,p.offset));
-      if(t==='ideal')    ideal++;
-      else if(t==='possible') possible++;
-      else if(t==='stretch')  stretch++;
-    });
-    return{utcH,ideal,possible,stretch,score:ideal*3+possible*2+stretch};
-  }).sort((a,b)=>b.score-a.score||a.utcH-b.utcH);
-
-  const picks=[];
-  for(const s of scored){
-    if(picks.length>=3)break;
-    if(picks.some(p=>Math.abs(p.utcH-s.utcH)<2))continue;
-    picks.push(s);
+function renderSuggestions() {
+  const el = document.getElementById('suggestionsContainer');
+  if (!participants.length) {
+    el.innerHTML = '<div class="empty-state">Add participants to see suggestions.</div>';
+    return;
   }
 
-  if(!picks.length){el.innerHTML='<p style="color:var(--text3);font-size:.85rem">No windows found.</p>';return}
+  // Score each hour
+  const hourScores = [];
+  for (let h = 0; h < 24; h++) {
+    const pZones = participants.map(p => hourZone(utcToLocal(h, p.city.tz)));
+    if (pZones.some(z => z === 'off')) { hourScores.push({ h, score: 0, zones: pZones }); continue; }
+    const score = pZones.reduce((s, z) => s + zoneScore(z), 0);
+    hourScores.push({ h, score, zones: pZones });
+  }
 
-  picks.forEach((pick,idx)=>{
-    const{utcH,ideal,possible,stretch}=pick;
-    const total=ideal+possible+stretch;
-    const cls=idx===0?'sug best':total===n?'sug ok':'sug';
-    const dotCls=ideal===n?'bdot-g':total===n?'bdot-y':'bdot-r';
-    const qualLbl=ideal===n?'Everyone in core hours':
-      ideal>0?`${ideal} ideal · ${possible+stretch} early/late`:
-      possible===n?'Possible for everyone':
-      `${total} of ${n} available`;
+  // Get top non-adjacent hours
+  const sorted = [...hourScores].filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+  const picks = [];
+  for (const item of sorted) {
+    if (picks.length >= 3) break;
+    if (picks.some(p => Math.abs(p.h - item.h) <= 1)) continue;
+    picks.push(item);
+  }
 
-    const timesHtml=participants.map(p=>{
-      const lh=localH(utcH,p.offset);
-      const type=hourType(lh);
-      const nd=(utcH+p.offset)>=24,pd=(utcH+p.offset)<0;
-      const dayTag=nd?'<span class="snd">+1 day</span>':pd?'<span class="snd">−1 day</span>':'';
-      const col=type==='ideal'?'var(--text)':type==='possible'?'#d97706':'#ea580c';
-      return `<div class="sug-t"><span class="sc">${p.city.flag} ${p.city.name}</span><span class="st" style="color:${col}">${fmtH(lh)}</span>${dayTag}</div>`;
-    }).join('');
+  if (!picks.length) {
+    el.innerHTML = '<div class="empty-state">No good overlap windows found. Try different participants.</div>';
+    return;
+  }
 
-    const note=ideal===n?'✓ Best option':total===n?'⚠ Early/late for some':'⚠ Off-hours for some';
-    const div=document.createElement('div');
-    div.className=cls;
-    div.innerHTML=`
-      <div class="sug-head"><span class="bdot ${dotCls}"></span><span class="sug-title">Option ${'ABC'[idx]} — ${qualLbl}</span><span class="sug-utc">UTC ${fmtH(utcH)}</span></div>
-      <div class="sug-times">${timesHtml}</div>
-      <div class="sug-foot"><span class="foot-note">${note}</span>
-        <button class="wa-btn">
-          <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.5 2C6.253 2 2 6.253 2 11.5c0 1.916.564 3.703 1.54 5.201L2 22l5.456-1.507A9.454 9.454 0 0011.5 21C16.747 21 21 16.747 21 11.5S16.747 2 11.5 2zm0 17.325a7.807 7.807 0 01-3.991-1.094l-.286-.17-2.963.818.849-2.883-.187-.297A7.81 7.81 0 013.676 11.5c0-4.316 3.509-7.825 7.825-7.825 4.315 0 7.824 3.509 7.824 7.825 0 4.316-3.509 7.825-7.824 7.825z"/></svg>
-          Copy for WhatsApp
-        </button>
+  const shareUrl = buildShareUrl();
+  el.innerHTML = '';
+
+  picks.forEach((pick, idx) => {
+    const maxScore = participants.length * 3;
+    const pct = Math.round((pick.score / maxScore) * 100);
+    const card = document.createElement('div');
+    card.className = 'suggestion-card';
+
+    let participantRows = '';
+    participants.forEach((p, i) => {
+      const z = pick.zones[i];
+      const localH = ((utcToLocal(pick.h, p.city.tz) % 24) + 24) % 24;
+      const lhInt = Math.floor(localH);
+      const lm = 0;
+      const timeStr = `${String(lhInt).padStart(2,'0')}:00`;
+      const nextDay = (utcToLocal(pick.h, p.city.tz) % 24 + 24) % 24 < utcToLocal(pick.h, p.city.tz) % 24 ||
+        (utcToLocal(pick.h, p.city.tz) >= 24);
+      const prevDay = utcToLocal(pick.h, p.city.tz) < 0;
+      const dayBadge = nextDay ? '<span class="day-badge">+1d</span>' : prevDay ? '<span class="day-badge">-1d</span>' : '';
+      participantRows += `<div class="sug-p-row">
+        <span class="p-flag">${p.city.flag}</span>
+        <span class="sug-p-time ${z}">${timeStr}</span>
+        ${dayBadge}
+        <span class="sug-p-name">${p.name} · ${p.city.name}</span>
       </div>`;
-    div.querySelector('.wa-btn').addEventListener('click',()=>copyWA(pick));
-    el.appendChild(div);
+    });
+
+    const rankLabel = ['Best', '2nd', '3rd'][idx];
+    const utcLabel = `${String(pick.h).padStart(2,'0')}:00 UTC`;
+
+    card.innerHTML = `
+      <div class="sug-header">
+        <span class="sug-rank">${rankLabel}</span>
+        <span class="sug-time">${utcLabel}</span>
+        <span class="sug-score">${pct}% match</span>
+      </div>
+      <div class="sug-participants">${participantRows}</div>
+      <button class="btn-copy" data-h="${pick.h}">📋 Copy for WhatsApp</button>
+    `;
+
+    card.querySelector('.btn-copy').addEventListener('click', function() {
+      const h = parseInt(this.dataset.h, 10);
+      const msg = buildWhatsAppMessage(h, shareUrl);
+      navigator.clipboard.writeText(msg).then(() => {
+        this.textContent = '✓ Copied!';
+        this.classList.add('copied');
+        setTimeout(() => { this.textContent = '📋 Copy for WhatsApp'; this.classList.remove('copied'); }, 2000);
+      }).catch(() => {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = msg; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        this.textContent = '✓ Copied!'; this.classList.add('copied');
+        setTimeout(() => { this.textContent = '📋 Copy for WhatsApp'; this.classList.remove('copied'); }, 2000);
+      });
+    });
+
+    el.appendChild(card);
   });
 }
 
-// ─── WHATSAPP ─────────────────────────────────────────────────────────────────
-function copyWA(pick){
-  const{utcH,ideal,possible,stretch}=pick;
-  const n=participants.length;
-  const names=participants.map(p=>p.name).join(', ');
-  const qual=ideal===n?'✅ Everyone in core hours':
-    ideal>0?`🟡 ${ideal} ideal · ${possible+stretch} early/late`:
-    `🟠 Workable — early/late for all`;
-  const lines=participants.map(p=>{
-    const lh=localH(utcH,p.offset);
-    const type=hourType(lh);
-    const nd=(utcH+p.offset)>=24,pd=(utcH+p.offset)<0;
-    const tag=nd?' (+1 day)':pd?' (−1 day)':'';
-    const note=type==='possible'?' ⚡':type==='stretch'?' 🌙':type==='off'?' ❌':'';
-    return`  • ${p.name} (${p.city.name}): ${fmtH(lh)}${tag}${note}`;
-  }).join('\n');
-  const msg=`📅 *Meeting time for ${names}*\n${qual}\n\n${lines}\n\n🌐 UTC ${fmtH(utcH)}\n\nView timeline → ${buildShareUrl()}`;
-  navigator.clipboard.writeText(msg).then(()=>toast('✓ Copied — paste into WhatsApp')).catch(()=>{
-    const ta=document.createElement('textarea');
-    ta.value=msg;ta.style.cssText='position:fixed;opacity:0';
-    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
-    toast('✓ Copied — paste into WhatsApp');
+function buildWhatsAppMessage(utcH, shareUrl) {
+  const utcStr = `${String(utcH).padStart(2,'0')}:00 UTC`;
+  let msg = `📅 *Meeting Time Proposal*\n\n🕐 ${utcStr}\n\n`;
+  participants.forEach(p => {
+    const localH = ((utcToLocal(utcH, p.city.tz) % 24) + 24) % 24;
+    const lhInt = Math.floor(localH);
+    const timeStr = `${String(lhInt).padStart(2,'0')}:00`;
+    const offset = formatOffset(getOffset(p.city.tz));
+    msg += `${p.city.flag} *${p.name}* (${p.city.name}, ${offset}): ${timeStr}\n`;
   });
+  msg += `\n🔗 ${shareUrl}`;
+  return msg;
 }
 
-// ─── SHARE ────────────────────────────────────────────────────────────────────
-function buildShareUrl(){
-  const hash='#'+participants.map(p=>encodeURIComponent(p.name)+':'+encodeURIComponent(p.city.name)).join('|');
-  return window.location.href.split('#')[0]+hash;
+// ─── URL HASH ─────────────────────────────────────────────────────────────────
+function buildShareUrl() {
+  if (!participants.length) return 'https://meetslot.app/';
+  const hash = participants.map(p => `${encodeURIComponent(p.name)}:${encodeURIComponent(p.city.name)}`).join('|');
+  return 'https://meetslot.app/#' + hash;
 }
-function renderShare(){
-  const card=document.getElementById('card-share');
-  if(!participants.length){card.style.display='none';return}
-  card.style.display='block';
-  document.getElementById('share-url').textContent=buildShareUrl();
-  history.replaceState(null,'',buildShareUrl());
-}
-document.getElementById('btn-copy-link').addEventListener('click',()=>{
-  navigator.clipboard.writeText(buildShareUrl()).catch(()=>{});
-  toast('✓ Link copied');
-});
 
-// ─── LOAD FROM HASH ───────────────────────────────────────────────────────────
-function loadFromHash(){
-  const hash=window.location.hash.slice(1);
-  if(!hash)return;
-  hash.split('|').forEach(part=>{
-    const[rn,rc]=part.split(':');
-    if(!rn||!rc)return;
-    const name=decodeURIComponent(rn);
-    const city=CITIES.find(c=>c.name.toLowerCase()===decodeURIComponent(rc).toLowerCase());
-    if(!city||participants.length>=MAX)return;
-    if(participants.find(p=>p.name.toLowerCase()===name.toLowerCase()))return;
-    participants.push({name,city,offset:getLiveOffset(city)});
-  });
-  if(participants.length)render();
+function updateHash() {
+  try {
+    if (!participants.length) { location.hash = ''; return; }
+    const hash = participants.map(p => `${encodeURIComponent(p.name)}:${encodeURIComponent(p.city.name)}`).join('|');
+    location.hash = hash;
+  } catch(e) { /* silently ignore in sandboxed iframes */ }
+}
+
+function loadFromHash() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) return;
+  try {
+    const parts = hash.split('|');
+    for (const part of parts) {
+      const [name, cityName] = part.split(':').map(decodeURIComponent);
+      if (!name || !cityName) continue;
+      const city = CITIES.find(c => c.name.toLowerCase() === cityName.toLowerCase());
+      if (city && participants.length < 6) participants.push({ name, city });
+    }
+  } catch(e) {}
+}
+
+// ─── UPDATE ALL ───────────────────────────────────────────────────────────────
+function updateAll() {
+  renderParticipantsList();
+  renderTimeline();
+  renderSuggestions();
+  updateHash();
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 loadFromHash();
-// Nudge scrubber to "now" every minute
-setInterval(()=>{
-  if(participants.length&&scrubPct===null)renderTimeline();
-},60000);
+updateAll();
+
+// Update scrubber clock every minute
+setInterval(() => {
+  if (!isDragging) {
+    // Don't auto-move if user has manually positioned it
+    // Only update tooltip text for current position
+    positionScrubber(scrubberPct);
+  }
+}, 60000);
+
 </script>
 </body>
 </html>
