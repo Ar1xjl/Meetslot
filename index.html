@@ -402,27 +402,25 @@ function fmtH(h){
 }
 function localH(utcH,off){return ((utcH+off)%24+24)%24}
 
-function getLiveOffset(city){
-  try{
-    // Use Intl to get the UTC offset in minutes directly — most reliable method
-    const now=new Date();
-    // Format a date in the target timezone and in UTC, compare
-    const fmt=new Intl.DateTimeFormat('en-US',{
-      timeZone:city.tz,
-      hour:'2-digit',minute:'2-digit',hour12:false,
-      year:'numeric',month:'2-digit',day:'2-digit'
-    });
-    const parts=fmt.formatToParts(now);
-    const get=type=>parseInt(parts.find(p=>p.type===type).value);
-    const localDate=new Date(get('year'),get('month')-1,get('day'),get('hour'),get('minute'));
-    const utcDate=new Date(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),now.getUTCHours(),now.getUTCMinutes());
-    let diff=(localDate-utcDate)/3600000;
-    // Clamp to [-12, +14] range
-    if(diff>14)diff-=24;
-    if(diff<-12)diff+=24;
-    return Math.round(diff*4)/4;
-  }catch(e){return 0}
-}
+// Pre-compute all offsets once at startup — instant lookup at add-time
+const OFFSET_CACHE=Object.create(null);
+(function buildCache(){
+  const now=new Date();
+  const utcDate=new Date(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),now.getUTCHours(),now.getUTCMinutes());
+  const tzSet=[...new Set(CITIES.map(c=>c.tz))];
+  tzSet.forEach(tz=>{
+    try{
+      const f=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false,year:'numeric',month:'2-digit',day:'2-digit'});
+      const parts=f.formatToParts(now);
+      const get=type=>parseInt(parts.find(p=>p.type===type).value);
+      const localDate=new Date(get('year'),get('month')-1,get('day'),get('hour'),get('minute'));
+      let diff=(localDate-utcDate)/3600000;
+      if(diff>14)diff-=24;if(diff<-12)diff+=24;
+      OFFSET_CACHE[tz]=Math.round(diff*4)/4;
+    }catch(e){OFFSET_CACHE[tz]=0;}
+  });
+})();
+function getLiveOffset(city){return OFFSET_CACHE[city.tz]??0;}
 function visitorOffset(){return -new Date().getTimezoneOffset()/60}
 function visitorLabel(){
   try{return Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop().replace(/_/g,' ')}
