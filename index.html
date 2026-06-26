@@ -368,9 +368,32 @@
 
   <!-- Card 3: Suggestions -->
   <div class="card">
-    <div class="card-title">Best meeting times</div>
+    <div class="card-title">Suggested meeting times</div>
+
+    <!-- Selected (scrubber) slot -->
+    <div id="selectedSlotWrap" style="display:none; margin-bottom:16px;">
+      <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#d97706;margin-bottom:8px;">⏱ Selected time (from timeline)</div>
+      <div class="suggestion-card" id="selectedSlotCard" style="border-color:#f59e0b;background:#fffbeb;">
+        <div class="sug-header">
+          <span class="sug-rank" style="background:#fef3c7;color:#92400e;">Selected</span>
+          <span class="sug-time" id="selectedUtcLabel">—</span>
+        </div>
+        <div class="sug-participants" id="selectedParticipants"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+          <button class="btn-copy" id="btnCopySelected">📋 Copy as decision</button>
+          <button class="btn-copy" id="btnVoteSelected" style="background:#f0fdf4;border-color:#86efac;color:#15803d;">🗳 Copy as vote</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--gray-text);margin-bottom:8px;" id="suggestionsLabel">💡 Best auto-suggestions</div>
     <div class="suggestions" id="suggestionsContainer">
       <div class="empty-state">Add participants to see suggestions.</div>
+    </div>
+
+    <!-- Copy all as vote -->
+    <div id="voteAllWrap" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <button class="btn btn-ghost" id="btnVoteAll" style="width:100%;font-size:0.85rem;">🗳 Copy all suggestions as voting poll</button>
     </div>
   </div>
 </div>
@@ -887,6 +910,9 @@ function positionScrubber(pct) {
     tip.style.left = `calc(${tipLeft}% + 6px)`;
     if (clampedPct > 0.85) tip.style.left = `calc(${tipLeft}% - 48px)`;
   });
+
+  // Keep selected slot card in sync
+  updateSelectedSlot();
 }
 
 function setupScrubberDrag() {
@@ -953,13 +979,80 @@ function setupScrubberDrag() {
   });
 }
 
+// ─── HELPERS: build participant rows HTML for a given utcH ──────────────────
+function buildParticipantRowsHTML(utcH) {
+  let html = '';
+  participants.forEach(p => {
+    const rawLocal = utcToLocal(utcH, p.city.tz);
+    const localH = ((rawLocal % 24) + 24) % 24;
+    const lhInt = Math.floor(localH);
+    const lm = Math.round((localH - lhInt) * 60);
+    const timeStr = `${String(lhInt).padStart(2,'0')}:${String(lm).padStart(2,'0')}`;
+    const z = hourZone(rawLocal);
+    const nextDay = rawLocal >= 24;
+    const prevDay = rawLocal < 0;
+    const dayBadge = nextDay ? '<span class="day-badge">+1d</span>' : prevDay ? '<span class="day-badge">-1d</span>' : '';
+    html += `<div class="sug-p-row">
+      <span class="p-flag">${p.city.flag}</span>
+      <span class="sug-p-time ${z}">${timeStr}</span>
+      ${dayBadge}
+      <span class="sug-p-name">${p.name} · ${p.city.name}</span>
+    </div>`;
+  });
+  return html;
+}
+
+// ─── SELECTED SLOT (scrubber-driven) ─────────────────────────────────────────
+function updateSelectedSlot() {
+  const wrap = document.getElementById('selectedSlotWrap');
+  const utcLabel = document.getElementById('selectedUtcLabel');
+  const pRows = document.getElementById('selectedParticipants');
+  if (!wrap || !utcLabel || !pRows) return;
+
+  if (!participants.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const utcH = scrubberPct * 24;
+  const utcHInt = Math.floor(utcH);
+  const utcM = Math.round((utcH - utcHInt) * 60);
+  const utcStr = `${String(utcHInt).padStart(2,'0')}:${String(utcM).padStart(2,'0')} UTC`;
+  utcLabel.textContent = utcStr;
+  pRows.innerHTML = buildParticipantRowsHTML(utcHInt);
+}
+
+function attachSelectedSlotButtons() {
+  const btnDecision = document.getElementById('btnCopySelected');
+  const btnVote = document.getElementById('btnVoteSelected');
+  if (btnDecision) {
+    btnDecision.onclick = function() {
+      const utcH = Math.floor(scrubberPct * 24);
+      const msg = buildDecisionMessage(utcH);
+      copyToClipboard(msg, this, '📋 Copy as decision');
+    };
+  }
+  if (btnVote) {
+    btnVote.onclick = function() {
+      const utcH = Math.floor(scrubberPct * 24);
+      const msg = buildVoteMessage([utcH]);
+      copyToClipboard(msg, this, '🗳 Copy as vote');
+    };
+  }
+}
+
 // ─── SUGGESTIONS ──────────────────────────────────────────────────────────────
 function renderSuggestions() {
   const el = document.getElementById('suggestionsContainer');
+  const voteAllWrap = document.getElementById('voteAllWrap');
+  const sugLabel = document.getElementById('suggestionsLabel');
+
   if (!participants.length) {
     el.innerHTML = '<div class="empty-state">Add participants to see suggestions.</div>';
+    if (voteAllWrap) voteAllWrap.style.display = 'none';
+    if (sugLabel) sugLabel.style.display = 'none';
     return;
   }
+
+  if (sugLabel) sugLabel.style.display = 'block';
 
   // Score each hour
   const hourScores = [];
@@ -981,36 +1074,29 @@ function renderSuggestions() {
 
   if (!picks.length) {
     el.innerHTML = '<div class="empty-state">No good overlap windows found. Try different participants.</div>';
+    if (voteAllWrap) voteAllWrap.style.display = 'none';
     return;
   }
 
-  const shareUrl = buildShareUrl();
+  if (voteAllWrap) {
+    voteAllWrap.style.display = 'block';
+    const btnVoteAll = document.getElementById('btnVoteAll');
+    if (btnVoteAll) {
+      btnVoteAll.onclick = function() {
+        const msg = buildVoteMessage(picks.map(p => p.h));
+        copyToClipboard(msg, this, '🗳 Copy all suggestions as voting poll');
+      };
+    }
+  }
+
   el.innerHTML = '';
+  const shareUrl = buildShareUrl();
 
   picks.forEach((pick, idx) => {
     const maxScore = participants.length * 3;
     const pct = Math.round((pick.score / maxScore) * 100);
     const card = document.createElement('div');
     card.className = 'suggestion-card';
-
-    let participantRows = '';
-    participants.forEach((p, i) => {
-      const z = pick.zones[i];
-      const localH = ((utcToLocal(pick.h, p.city.tz) % 24) + 24) % 24;
-      const lhInt = Math.floor(localH);
-      const lm = 0;
-      const timeStr = `${String(lhInt).padStart(2,'0')}:00`;
-      const nextDay = (utcToLocal(pick.h, p.city.tz) % 24 + 24) % 24 < utcToLocal(pick.h, p.city.tz) % 24 ||
-        (utcToLocal(pick.h, p.city.tz) >= 24);
-      const prevDay = utcToLocal(pick.h, p.city.tz) < 0;
-      const dayBadge = nextDay ? '<span class="day-badge">+1d</span>' : prevDay ? '<span class="day-badge">-1d</span>' : '';
-      participantRows += `<div class="sug-p-row">
-        <span class="p-flag">${p.city.flag}</span>
-        <span class="sug-p-time ${z}">${timeStr}</span>
-        ${dayBadge}
-        <span class="sug-p-name">${p.name} · ${p.city.name}</span>
-      </div>`;
-    });
 
     const rankLabel = ['Best', '2nd', '3rd'][idx];
     const utcLabel = `${String(pick.h).padStart(2,'0')}:00 UTC`;
@@ -1021,24 +1107,20 @@ function renderSuggestions() {
         <span class="sug-time">${utcLabel}</span>
         <span class="sug-score">${pct}% match</span>
       </div>
-      <div class="sug-participants">${participantRows}</div>
-      <button class="btn-copy" data-h="${pick.h}">📋 Copy for WhatsApp</button>
+      <div class="sug-participants">${buildParticipantRowsHTML(pick.h)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+        <button class="btn-copy" data-h="${pick.h}" data-action="decision">📋 Copy as decision</button>
+        <button class="btn-copy" data-h="${pick.h}" data-action="vote" style="background:#f0fdf4;border-color:#86efac;color:#15803d;">🗳 Copy as vote</button>
+      </div>
     `;
 
-    card.querySelector('.btn-copy').addEventListener('click', function() {
-      const h = parseInt(this.dataset.h, 10);
-      const msg = buildWhatsAppMessage(h, shareUrl);
-      navigator.clipboard.writeText(msg).then(() => {
-        this.textContent = '✓ Copied!';
-        this.classList.add('copied');
-        setTimeout(() => { this.textContent = '📋 Copy for WhatsApp'; this.classList.remove('copied'); }, 2000);
-      }).catch(() => {
-        // Fallback
-        const ta = document.createElement('textarea');
-        ta.value = msg; ta.style.position = 'fixed'; ta.style.opacity = '0';
-        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-        this.textContent = '✓ Copied!'; this.classList.add('copied');
-        setTimeout(() => { this.textContent = '📋 Copy for WhatsApp'; this.classList.remove('copied'); }, 2000);
+    card.querySelectorAll('.btn-copy').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const h = parseInt(this.dataset.h, 10);
+        const action = this.dataset.action;
+        const originalText = this.textContent;
+        const msg = action === 'vote' ? buildVoteMessage([h]) : buildDecisionMessage(h);
+        copyToClipboard(msg, this, originalText);
       });
     });
 
@@ -1046,18 +1128,68 @@ function renderSuggestions() {
   });
 }
 
-function buildWhatsAppMessage(utcH, shareUrl) {
-  const utcStr = `${String(utcH).padStart(2,'0')}:00 UTC`;
-  let msg = `📅 *Meeting Time Proposal*\n\n🕐 ${utcStr}\n\n`;
+// ─── MESSAGE BUILDERS ─────────────────────────────────────────────────────────
+function formatSlotLines(utcH) {
+  const shareUrl = buildShareUrl();
+  let lines = '';
   participants.forEach(p => {
-    const localH = ((utcToLocal(utcH, p.city.tz) % 24) + 24) % 24;
+    const rawLocal = utcToLocal(utcH, p.city.tz);
+    const localH = ((rawLocal % 24) + 24) % 24;
     const lhInt = Math.floor(localH);
     const timeStr = `${String(lhInt).padStart(2,'0')}:00`;
     const offset = formatOffset(getOffset(p.city.tz));
-    msg += `${p.city.flag} *${p.name}* (${p.city.name}, ${offset}): ${timeStr}\n`;
+    lines += `${p.city.flag} *${p.name}* (${p.city.name}, ${offset}): ${timeStr}\n`;
   });
+  return lines;
+}
+
+function buildDecisionMessage(utcH) {
+  const utcStr = `${String(utcH).padStart(2,'0')}:00 UTC`;
+  const shareUrl = buildShareUrl();
+  let msg = `📅 *Meeting confirmed!*\n\n🕐 ${utcStr}\n\n`;
+  msg += formatSlotLines(utcH);
   msg += `\n🔗 ${shareUrl}`;
   return msg;
+}
+
+function buildVoteMessage(hours) {
+  const shareUrl = buildShareUrl();
+  const emojis = ['1️⃣','2️⃣','3️⃣'];
+  let msg = `🗳 *Meeting time poll — please vote!*\n\n`;
+  msg += `React with the number(s) that work for you:\n\n`;
+  hours.forEach((h, idx) => {
+    const utcStr = `${String(h).padStart(2,'0')}:00 UTC`;
+    msg += `${emojis[idx] || '▪️'} *Option ${idx + 1}* — ${utcStr}\n`;
+    participants.forEach(p => {
+      const rawLocal = utcToLocal(h, p.city.tz);
+      const localH = ((rawLocal % 24) + 24) % 24;
+      const lhInt = Math.floor(localH);
+      const timeStr = `${String(lhInt).padStart(2,'0')}:00`;
+      const offset = formatOffset(getOffset(p.city.tz));
+      const nextDay = rawLocal >= 24 ? ' (+1d)' : rawLocal < 0 ? ' (-1d)' : '';
+      msg += `   ${p.city.flag} ${p.name}: ${timeStr}${nextDay}\n`;
+    });
+    msg += '\n';
+  });
+  msg += `🔗 ${shareUrl}`;
+  return msg;
+}
+
+// ─── CLIPBOARD HELPER ─────────────────────────────────────────────────────────
+function copyToClipboard(text, btn, originalLabel) {
+  const doFallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  };
+  const onSuccess = () => {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = originalLabel; btn.classList.remove('copied'); }, 2000);
+  };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(() => { doFallback(); onSuccess(); });
+  } else { doFallback(); onSuccess(); }
 }
 
 // ─── URL HASH ─────────────────────────────────────────────────────────────────
@@ -1094,6 +1226,8 @@ function updateAll() {
   renderParticipantsList();
   renderTimeline();
   renderSuggestions();
+  updateSelectedSlot();
+  attachSelectedSlotButtons();
   updateHash();
 }
 
